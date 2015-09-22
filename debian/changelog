@@ -1,0 +1,77 @@
+fake-juju (0.11-2) trusty; urgency=medium
+
+  * Depend on wget
+
+ -- Free Ekanayaka <free.ekanayaka@canonical.com>  Mon, 21 Sep 2015 20:33:35 +0200
+
+fake-juju (0.11-1) trusty; urgency=medium
+
+  * New upstream version
+
+ -- Free Ekanayaka <free.ekanayaka@canonical.com>  Mon, 21 Sep 2015 20:26:31 +0200
+
+fake-juju (0.10-1) trusty; urgency=medium
+
+  * New upstream release
+
+ -- Free Ekanayaka <free.ekanayaka@canonical.com>  Thu, 27 Aug 2015 12:40:48 +0200
+
+fake-juju (0.9-1) trusty; urgency=medium
+
+  * New upstream release
+
+ -- Free Ekanayaka <free.ekanayaka@canonical.com>  Wed, 19 Aug 2015 10:42:15 +0200
+
+fake-juju (0.8-1) trusty; urgency=medium
+
+  * New upstream version
+
+ -- Free Ekanayaka <free.ekanayaka@canonical.com>  Fri, 10 Jul 2015 12:29:01 +0200
+
+fake-juju (0.7-1) trusty; urgency=medium
+
+  * New upstream version
+
+ -- Free Ekanayaka <free.ekanayaka@canonical.com>  Thu, 09 Jul 2015 11:04:10 +0200
+
+fake-juju (0.6-1) trusty; urgency=medium
+
+  * New upstream version
+
+ -- Free Ekanayaka <free.ekanayaka@canonical.com>  Mon, 06 Jul 2015 15:28:06 +0200
+
+fake-juju (0.5-1) trusty; urgency=medium
+
+  * Fix unit status
+
+ -- Free Ekanayaka <free.ekanayaka@canonical.com>  Thu, 02 Jul 2015 13:00:55 +0200
+
+fake-juju (0.4-1) trusty; urgency=medium
+
+  * New upstream version (support for juju 1.24.1)
+
+ -- Free Ekanayaka <free@orfeo>  Fri, 26 Jun 2015 14:56:54 +0200
+
+fake-juju (0.3-2) trusty; urgency=medium
+
+  * Add dependency on juju-mongodb
+
+ -- Free Ekanayaka <free.ekanayaka@canonical.com>  Wed, 24 Jun 2015 17:20:35 +0200
+
+fake-juju (0.3-1) trusty; urgency=medium
+
+  * New upstream version
+
+ -- Free Ekanayaka <free.ekanayaka@canonical.com>  Wed, 24 Jun 2015 12:09:08 +0200
+
+fake-juju (0.2-1) trusty; urgency=medium
+
+  * New upstream release
+
+ -- Free Ekanayaka <free.ekanayaka@canonical.com>  Wed, 24 Jun 2015 11:24:49 +0200
+
+fake-juju (0.1-1) trusty; urgency=medium
+
+  * Initial release.
+
+ -- Free Ekanayaka <free.ekanayaka@canonical.com>  Tue, 23 Jun 2015 23:08:56 +0200

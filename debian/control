@@ -1,0 +1,13 @@
+Source: fake-juju
+Maintainer: Free Ekanayaka <free.ekanayaka@canonical.com>
+Section: devel
+Priority: optional
+Standards-Version: 3.9.2
+Build-Depends: debhelper (>= 9), python-jujuclient, golang-go, wget
+
+Package: fake-juju
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, juju-mongodb
+Description: A fake implentation of Juju using the dummy provider.
+ Provide a fake Juju server behaving like a regular one, except
+ that the provider will be a dummy one.

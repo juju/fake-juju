@@ -1,0 +1,26 @@
+--- 1.24.4/src/github.com/juju/juju/testcharms/charm.go.orig	2015-06-24 12:02:02.746416146 +0200
++++ 1.24.4/src/github.com/juju/juju/testcharms/charm.go	2015-06-24 12:03:49.810418650 +0200
+@@ -10,4 +10,6 @@
+ )
+ 
+ // Repo provides access to the test charm repository.
+-var Repo = testing.NewRepo("charm-repo", "quantal")
++// XXX fake-juju: avoid crashing because the charm-repo dir is not there
++//var Repo = testing.NewRepo("charm-repo", "quantal")
++var Repo = &testing.Repo{}
+
+--- 1.24.4/src/github.com/juju/juju/provider/dummy/environs.go.orig	2015-07-06 15:01:14.200568258 +0200
++++ 1.24.4/src/github.com/juju/juju/provider/dummy/environs.go	2015-07-06 15:18:32.648549661 +0200
+@@ -628,9 +628,9 @@
+ 
+ // PrecheckInstance is specified in the state.Prechecker interface.
+ func (*environ) PrecheckInstance(series string, cons constraints.Value, placement string) error {
+-	if placement != "" && placement != "valid" {
+-		return fmt.Errorf("%s placement is invalid", placement)
+-	}
++//	if placement != "" && placement != "valid" {
++//		return fmt.Errorf("%s placement is invalid", placement)
++//	}
+ 	return nil
+ }
+ 
