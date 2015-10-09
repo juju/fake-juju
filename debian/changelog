@@ -1,3 +1,9 @@
+fake-juju (0.13-2) trusty; urgency=medium
+
+  * Drop build-dependency on python-jujuclient
+
+ -- Free Ekanayaka <free.ekanayaka@canonical.com>  Fri, 09 Oct 2015 13:50:31 +0200
+
 fake-juju (0.13-1) trusty; urgency=medium
 
   * Support writing .jenv files under
