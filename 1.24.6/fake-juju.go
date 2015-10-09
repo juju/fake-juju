@@ -71,7 +71,7 @@ func handleCommand(command string) error {
 }
 
 func bootstrap() error {
-	password, err := environmentPassword()
+	envName, password, err := environmentNameAndPassword()
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func bootstrap() error {
 		return err
 	}
 	command.Start()	
-	apiInfo, err := parseApiInfo(stdout)
+	apiInfo, err := parseApiInfo(envName, stdout)
 	if err != nil {
 		return err
 	}
@@ -153,23 +153,23 @@ func destroyEnvironment() error {
 	return nil
 }
 
-func environmentPassword() (string, error) {
+func environmentNameAndPassword() (string, string, error) {
 	jujuHome := os.Getenv("JUJU_HOME")
 	osenv.SetJujuHome(jujuHome)
 	environs, err := environs.ReadEnvirons(
 		filepath.Join(jujuHome, "environments.yaml"))
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	names := environs.Names()
-	config, err := environs.Config(names[0])
+	envName := environs.Names()[0]
+	config, err := environs.Config(envName)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return config.AdminSecret(), nil
+	return envName, config.AdminSecret(), nil
 }
 
-func parseApiInfo(stdout io.ReadCloser) (*api.Info, error) {
+func parseApiInfo(envName string, stdout io.ReadCloser) (*api.Info, error) {
         buffer := bufio.NewReader(stdout)
 	line, _, err := buffer.ReadLine()
 	if err != nil {
@@ -200,7 +200,7 @@ func parseApiInfo(stdout io.ReadCloser) (*api.Info, error) {
 		CACert: endpoint.CACert,
 		EnvironTag: environTag,
 	}
-	err = writeProcessInfo(&processInfo{
+	err = writeProcessInfo(envName, &processInfo{
 		WorkDir: workDir,
 		EndpointAddr: addresses[0],
 		Uuid: uuid,
@@ -225,9 +225,22 @@ func readProcessInfo() (*processInfo, error) {
 	return info, nil
 }
 
-func writeProcessInfo(info *processInfo) error {
-	infoPath := filepath.Join(os.Getenv("JUJU_HOME"), "fakejuju")
+func writeProcessInfo(envName string, info *processInfo) error {
+	jujuHome := os.Getenv("JUJU_HOME")
+	infoPath := filepath.Join(jujuHome, "fakejuju")
+	logPath := filepath.Join(jujuHome, "fake-juju.log")
+	envPath := filepath.Join(jujuHome, "environments")
+	os.Mkdir(envPath, 0755)
+	jEnvPath := filepath.Join(envPath, envName + ".jenv")
 	data, _ := goyaml.Marshal(info)
+	err := os.Symlink(filepath.Join(info.WorkDir, "fake-juju.log"), logPath)
+	if err != nil {
+		return err
+	}
+	err = os.Symlink(filepath.Join(info.WorkDir, "environments/dummyenv.jenv"), jEnvPath)
+	if err != nil {
+		return err
+	}
 	return ioutil.WriteFile(infoPath, data, 0644)
 }
 

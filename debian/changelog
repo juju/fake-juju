@@ -1,3 +1,9 @@
+fake-juju (0.13-1) trusty; urgency=medium
+
+  * Support writing .jenv files under
+
+ -- Free Ekanayaka <free.ekanayaka@canonical.com>  Fri, 09 Oct 2015 12:48:48 +0200
+
 fake-juju (0.12-1) trusty; urgency=medium
 
   * Test build
