@@ -11,7 +11,19 @@ Adding a new version
 2) Create a new version subdirectory, copy fake_juju.go there.
 3) Make sure there is a corresponding .patch file in the patches/ subdirectory.
 
+Dependencies
+------------
+
+To run tests, the code will need a recent python-jujuclient package installed.
+One should add the juju-stable PPA to get a fresh enough version on at least
+trusty and vivid:
+
+sudo add-apt-repository ppa:juju/stable
+sudo apt-get update && sudo apt-get install python-jujuclient
+
 Building
 ---------
 
 Generally speak, this package is built from a recipe here: https://code.launchpad.net/fake-juju/+recipes
+
+You can build it locally running 'dpkg-buildpackage -b'.
