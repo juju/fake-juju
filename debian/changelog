@@ -1,3 +1,9 @@
+fake-juju (0.15-2) trusty; urgency=medium
+
+  * Patch paths fixed for 1.24.7.
+
+ -- Christopher Glass (Canonical) <christopher.glass@canonical.com>  Wed, 04 Nov 2015 11:13:09 +0100
+
 fake-juju (0.15-1) trusty; urgency=medium
 
   * Added support for juju 1.24.7
