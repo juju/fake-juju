@@ -1,0 +1,17 @@
+Fake juju
+==========
+
+This package is a fake juju environment/API endpoint (basically a real juju
+with a null provider).
+
+Adding a new version
+---------------------
+
+1) Edit the Makefile and add the desired version on the very first line.
+2) Create a new version subdirectory, copy fake_juju.go there.
+3) Make sure there is a corresponding .patch file in the patches/ subdirectory.
+
+Building
+---------
+
+Generally speak, this package is built from a recipe here: https://code.launchpad.net/fake-juju/+recipes
