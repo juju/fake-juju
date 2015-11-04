@@ -53,6 +53,7 @@ type processInfo struct {
         WorkDir string
 	EndpointAddr string
 	Uuid string
+	CACert string
 }
 
 func handleCommand(command string) error {
@@ -232,9 +233,15 @@ func readProcessInfo() (*processInfo, error) {
 }
 
 func writeProcessInfo(info *processInfo) error {
-	infoPath := filepath.Join(os.Getenv("JUJU_HOME"), "fakejuju")
+	jujuHome := os.Getenv("JUJU_HOME")
+	infoPath := filepath.Join(jujuHome, "fakejuju")
+	caCertPath := filepath.Join(jujuHome, "cert.ca")
 	data, _ := goyaml.Marshal(info)
-	return ioutil.WriteFile(infoPath, data, 0644)
+	err := ioutil.WriteFile(infoPath, data, 0644)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(caCertPath, []byte(info.CACert), 0644)
 }
 
 type FakeJujuSuite struct {

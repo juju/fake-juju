@@ -52,6 +52,7 @@ type processInfo struct {
         WorkDir string
 	EndpointAddr string
 	Uuid string
+	CACert string
 }
 
 func handleCommand(command string) error {
@@ -204,6 +205,7 @@ func parseApiInfo(envName string, stdout io.ReadCloser) (*api.Info, error) {
 		WorkDir: workDir,
 		EndpointAddr: addresses[0],
 		Uuid: uuid,
+		CACert: endpoint.CACert,
 	})
 	if err != nil {
 		return nil, err
@@ -229,6 +231,7 @@ func writeProcessInfo(envName string, info *processInfo) error {
 	jujuHome := os.Getenv("JUJU_HOME")
 	infoPath := filepath.Join(jujuHome, "fakejuju")
 	logPath := filepath.Join(jujuHome, "fake-juju.log")
+	caCertPath := filepath.Join(jujuHome, "cert.ca")
 	envPath := filepath.Join(jujuHome, "environments")
 	os.Mkdir(envPath, 0755)
 	jEnvPath := filepath.Join(envPath, envName + ".jenv")
@@ -241,7 +244,11 @@ func writeProcessInfo(envName string, info *processInfo) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(infoPath, data, 0644)
+	err = ioutil.WriteFile(infoPath, data, 0644)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(caCertPath, []byte(info.CACert), 0644)
 }
 
 type FakeJujuSuite struct {

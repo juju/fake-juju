@@ -3,7 +3,7 @@ import tempfile
 import shutil
 import subprocess
 import json
-
+import ssl
 
 from jujuclient import Environment
 
@@ -23,6 +23,11 @@ ENVIRONMENTS_YAML = """environments:
         type: dummy
 """
 
+# XXX No support for cert files in Environment._http_conn, so
+# add it via monkey patching.
+if hasattr(ssl, "_create_unverified_context()"):
+    ssl._create_default_https_context = ssl._create_unverified_context
+
 
 class JujuFakeTest(TestCase):
 
@@ -39,6 +44,8 @@ class JujuFakeTest(TestCase):
         output = subprocess.check_output([JUJU_FAKE, "api-info"], env=self.env)
         api_info = json.loads(output)
         endpoint = "wss://" + str(api_info["state-servers"][0]) + "/"
+        # TODO make use of the cert
+        # ca_cert = os.path.join(self.juju_home, "cert.ca")
         self.environment = Environment(endpoint)
         self.environment.login("test")
 
