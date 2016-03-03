@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 
 	"github.com/juju/juju/environs"
+	"github.com/juju/juju/environs/config"
 	"github.com/juju/juju/environs/configstore"
 	"github.com/juju/juju/juju/osenv"
 	"github.com/juju/juju/state"
@@ -72,14 +73,17 @@ func handleCommand(command string) error {
 }
 
 func bootstrap() error {
-	envName, password, err := environmentNameAndPassword()
+	envName, config, err := environmentNameAndConfig()
 	if err != nil {
 		return err
 	}
 	command := exec.Command(os.Args[0])
 	command.Env = os.Environ()
-	command.Env = append(command.Env, "ADMIN_PASSWORD=" + password)
-        stdout, err := command.StdoutPipe()
+	command.Env = append(
+		command.Env, "ADMIN_PASSWORD=" + config.AdminSecret())
+	defaultSeries, _ := config.DefaultSeries()
+	command.Env = append(command.Env, "DEFAULT_SERIES=" + defaultSeries)
+	stdout, err := command.StdoutPipe()
 	if err != nil {
 		return err
 	}
@@ -153,20 +157,20 @@ func destroyEnvironment() error {
 	return nil
 }
 
-func environmentNameAndPassword() (string, string, error) {
+func environmentNameAndConfig() (string, *config.Config, error) {
 	jujuHome := os.Getenv("JUJU_HOME")
 	osenv.SetJujuHome(jujuHome)
 	environs, err := environs.ReadEnvirons(
 		filepath.Join(jujuHome, "environments.yaml"))
 	if err != nil {
-		return "", "", err
+		return "", nil, err
 	}
 	envName := environs.Names()[0]
 	config, err := environs.Config(envName)
 	if err != nil {
-		return "", "", err
+		return "", nil, err
 	}
-	return envName, config.AdminSecret(), nil
+	return envName, config, nil
 }
 
 func parseApiInfo(envName string, stdout io.ReadCloser) (*api.Info, error) {
@@ -275,10 +279,17 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	if os.Getenv("ADMIN_PASSWORD") != "" {
 		password = os.Getenv("ADMIN_PASSWORD")
 	}
+	defaultSeries := "trusty"
+	if os.Getenv("DEFAULT_SERIES") != "" {
+		defaultSeries = os.Getenv("DEFAULT_SERIES")
+	}
 	_, err = s.State.AddUser("admin", "Admin", password, "dummy-admin")
 	c.Assert(err, gc.IsNil)
 	_, err = s.State.AddEnvironmentUser(
 		names.NewLocalUserTag("admin"), names.NewLocalUserTag("dummy-admin"), "Admin")
+	c.Assert(err, gc.IsNil)
+	err = s.State.UpdateEnvironConfig(
+		map[string]interface{}{"default-series": defaultSeries}, nil, nil)
 	c.Assert(err, gc.IsNil)
 
 	// Create a machine to manage the environment.
@@ -286,7 +297,7 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 		InstanceId: s.newInstanceId(),
 		Nonce:    agent.BootstrapNonce,
 		Jobs:       []state.MachineJob{state.JobManageEnviron, state.JobHostUnits},
-		Series: "trusty",
+		Series: defaultSeries,
 	})
 	c.Assert(stateServer.SetAgentVersion(version.Current), gc.IsNil)
 	address := network.NewScopedAddress("127.0.0.1", network.ScopeCloudLocal)
