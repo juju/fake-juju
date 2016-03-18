@@ -1,24 +1,26 @@
 VERSIONS = 1.22.6 1.24.6 1.24.7 1.25.0 1.25.3
 TARBALLS = $(foreach version,$(VERSIONS),juju-core_$(version).tar.gz)
 BUILT_VERSIONS = $(foreach version,$(VERSIONS),$(version)/$(version))
+JUJU_TARBALL = juju-core_$(JUJU_VERSION).tar.gz
+JUJU_PATCH = patches/juju-core_$(JUJU_VERSION).patch
 
 build: $(BUILT_VERSIONS)
 .PHONY: build
 
 $(BUILT_VERSIONS):
 	for VERSION in $(VERSIONS); do \
-	    JUJU_VERSION=$$VERSION $(MAKE) build-common; \
+	    $(MAKE) build-common JUJU_VERSION=$$VERSION; \
 	done
 
-build-common: juju-core_$(JUJU_VERSION).tar.gz patches/juju-core_$(JUJU_VERSION).patch
-	tar -C $(JUJU_VERSION) --strip=1 -z -xf juju-core_$(JUJU_VERSION).tar.gz
-	patch -p0 < patches/juju-core_$(JUJU_VERSION).patch
+build-common: $(JUJU_TARBALL) $(JUJU_PATCH)
+	tar -C $(JUJU_VERSION) --strip=1 -z -xf $(JUJU_TARBALL)
+	patch -p0 < $(JUJU_PATCH)
 	cd $(JUJU_VERSION) && GOPATH=$(shell pwd)/$(JUJU_VERSION) go build
 .PHONY: build-common
 
 install: 
 	for VERSION in $(VERSIONS) ; do \
-	    JUJU_VERSION=$$VERSION make install-common; \
+	    $(MAKE) install-common JUJU_VERSION=$$VERSION; \
 	done
 .PHONY: install
 
@@ -33,7 +35,7 @@ clean:
 .PHONY: clean
 
 clean-common:
-	rm -f juju-core_$(JUJU_VERSION).tar.gz
+	rm -f $(JUJU_TARBALL)
 	rm -rf $(JUJU_VERSION)/src
 	rm -f $(JUJU_VERSION)/$(JUJU_VERSION)
 	rm -rf _trial_temp
