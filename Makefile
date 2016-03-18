@@ -41,15 +41,10 @@ clean-common:
 .PHONY: clean-common
 
 
-test:
-	for VERSION in $(VERSIONS) ; do \
-	    JUJU_VERSION=$$VERSION $(MAKE) test-common; \
-	done
+# Use xargs here so that we don't throw away the return codes, and correctly fail if any of the tests fail
+test: $(BUILT_VERSIONS)
+	@echo -n $(VERSIONS) | xargs -t -d' ' -I {} env JUJU_VERSION={} python -m unittest tests.test_fake
 .PHONY: test
-
-test-common: $(JUJU_VERSION)/$(JUJU_VERSION)
-	JUJU_VERSION=$(JUJU_VERSION) python -m unittest tests.test_fake
-.PHONY: test-common
 
 juju-core_%.tar.gz:
 	wget https://launchpad.net/juju-core/$(shell echo $* | cut -f 1,2 -d .)/$*/+download/$@
