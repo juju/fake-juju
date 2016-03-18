@@ -10,7 +10,7 @@ $(BUILT_VERSIONS):
 	    JUJU_VERSION=$$VERSION $(MAKE) build-common; \
 	done
 
-build-common: juju-core_$(JUJU_VERSION).tar.gz
+build-common: juju-core_$(JUJU_VERSION).tar.gz patches/juju-core_$(JUJU_VERSION).patch
 	tar -C $(JUJU_VERSION) --strip=1 -z -xf juju-core_$(JUJU_VERSION).tar.gz
 	patch -p0 < patches/juju-core_$(JUJU_VERSION).patch
 	cd $(JUJU_VERSION) && GOPATH=$(shell pwd)/$(JUJU_VERSION) go build
