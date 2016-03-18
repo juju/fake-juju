@@ -11,7 +11,7 @@
 
 --- 1.24.6/src/github.com/juju/juju/provider/dummy/environs.go.orig	2015-07-06 15:01:14.200568258 +0200
 +++ 1.24.6/src/github.com/juju/juju/provider/dummy/environs.go	2015-07-06 15:18:32.648549661 +0200
-@@ -628,9 +628,9 @@
+@@ -642,9 +642,9 @@
  
  // PrecheckInstance is specified in the state.Prechecker interface.
  func (*environ) PrecheckInstance(series string, cons constraints.Value, placement string) error {
