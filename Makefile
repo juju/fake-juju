@@ -7,7 +7,7 @@ build: $(BUILT_VERSIONS)
 
 $(BUILT_VERSIONS):
 	for VERSION in $(VERSIONS); do \
-	    JUJU_VERSION=$$VERSION $(MAKE) build-common; \
+	    $(MAKE) build-common JUJU_VERSION=$$VERSION; \
 	done
 
 build-common: juju-core_$(JUJU_VERSION).tar.gz patches/juju-core_$(JUJU_VERSION).patch
@@ -18,7 +18,7 @@ build-common: juju-core_$(JUJU_VERSION).tar.gz patches/juju-core_$(JUJU_VERSION)
 
 install: 
 	for VERSION in $(VERSIONS) ; do \
-	    JUJU_VERSION=$$VERSION make install-common; \
+	    $(MAKE) install-common JUJU_VERSION=$$VERSION; \
 	done
 .PHONY: install
 
