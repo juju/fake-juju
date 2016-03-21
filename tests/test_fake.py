@@ -38,7 +38,7 @@ class JujuFakeTest(TestCase):
         with open(environments_yaml, "w") as fd:
             fd.write(ENVIRONMENTS_YAML)
         self.env = os.environ.copy()
-        self.env["JUJU_HOME"] = self.juju_home
+        self.env["JUJU_DATA"] = self.juju_home
         self.juju_fake = os.path.join(JUJU_VERSION, JUJU_VERSION)
         subprocess.check_call([JUJU_FAKE, "bootstrap"], env=self.env)
         output = subprocess.check_output([JUJU_FAKE, "api-info"], env=self.env)

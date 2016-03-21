@@ -1,0 +1,49 @@
+--- 2.0-beta2/src/github.com/juju/juju/testcharms/charm.go      2016-03-10 13:45:57.000000000 +0100
++++ 2.0-beta2/src/github.com/juju/juju/testcharms/charm.go.orig 2016-03-21 10:46:24.312966629 +0100
+@@ -15,7 +15,9 @@
+ )
+ 
+ // Repo provides access to the test charm repository.
+-var Repo = testing.NewRepo("charm-repo", "quantal")
++// XXX fake-juju: avoid crashing because the charm-repo dir is not there
++//var Repo = testing.NewRepo("charm-repo", "quantal")
++var Repo = &testing.Repo{}
+ 
+ // UploadCharm uploads a charm using the given charm store client, and returns
+ // the resulting charm URL and charm.
+--- 2.0-beta2/src/github.com/juju/juju/provider/dummy/environs.go.orig	2015-07-06 15:01:14.200568258 +0200
++++ 2.0-beta2/src/github.com/juju/juju/provider/dummy/environs.go	2015-07-06 15:18:32.648549661 +0200
+@@ -690,9 +690,9 @@
+ 
+ // PrecheckInstance is specified in the state.Prechecker interface.
+ func (*environ) PrecheckInstance(series string, cons constraints.Value, placement string) error {
+-	if placement != "" && placement != "valid" {
+-		return fmt.Errorf("%s placement is invalid", placement)
+-	}
++//	if placement != "" && placement != "valid" {
++//		return fmt.Errorf("%s placement is invalid", placement)
++//	}
+ 	return nil
+ }
+ 
+--- 2.0-beta2/src/github.com/juju/juju/testing/cert.go	2016-03-18 09:25:34 +0000
++++ 2.0-beta2/src/github.com/juju/juju/testing/cert.go	2016-03-18 09:26:04 +0000
+@@ -52,7 +52,7 @@
+ }
+ 
+ func mustNewCA() (string, string) {
+-	cert.KeyBits = 512
++	cert.KeyBits = 1024
+ 	caCert, caKey, err := cert.NewCA("juju testing", time.Now().AddDate(10, 0, 0))
+ 	if err != nil {
+ 		panic(err)
+@@ -61,7 +61,7 @@
+ }
+ 
+ func mustNewServer() (string, string) {
+-	cert.KeyBits = 512
++	cert.KeyBits = 1024
+ 	var hostnames []string
+ 	srvCert, srvKey, err := cert.NewServer(CACert, CAKey, time.Now().AddDate(10, 0, 0), hostnames)
+ 	if err != nil {
+
