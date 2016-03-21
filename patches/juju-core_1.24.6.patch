@@ -11,7 +11,7 @@
 
 --- 1.24.6/src/github.com/juju/juju/provider/dummy/environs.go.orig	2015-07-06 15:01:14.200568258 +0200
 +++ 1.24.6/src/github.com/juju/juju/provider/dummy/environs.go	2015-07-06 15:18:32.648549661 +0200
-@@ -628,9 +628,9 @@
+@@ -642,9 +642,9 @@
  
  // PrecheckInstance is specified in the state.Prechecker interface.
  func (*environ) PrecheckInstance(series string, cons constraints.Value, placement string) error {
@@ -24,3 +24,24 @@
  	return nil
  }
  
+--- 1.24.6/src/github.com/juju/juju/testing/cert.go	2016-03-18 09:25:34 +0000
++++ 1.24.6/src/github.com/juju/juju/testing/cert.go	2016-03-18 09:26:04 +0000
+@@ -52,7 +52,7 @@
+ }
+ 
+ func mustNewCA() (string, string) {
+-	cert.KeyBits = 512
++	cert.KeyBits = 1024
+ 	caCert, caKey, err := cert.NewCA("juju testing", time.Now().AddDate(10, 0, 0))
+ 	if err != nil {
+ 		panic(err)
+@@ -61,7 +61,7 @@
+ }
+ 
+ func mustNewServer() (string, string) {
+-	cert.KeyBits = 512
++	cert.KeyBits = 1024
+ 	var hostnames []string
+ 	srvCert, srvKey, err := cert.NewServer(CACert, CAKey, time.Now().AddDate(10, 0, 0), hostnames)
+ 	if err != nil {
+
