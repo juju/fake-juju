@@ -8,6 +8,7 @@ import ssl
 from jujuclient import Environment
 
 from unittest import TestCase
+from unittest.case import SkipTest
 
 ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
 
@@ -33,6 +34,8 @@ class JujuFakeTest(TestCase):
 
     def setUp(self):
         super(JujuFakeTest, self).setUp()
+        if JUJU_VERSION.startswith("2.0"):
+            raise SkipTest("Juju 2.0 still not fully supported")
         self.juju_home = tempfile.mkdtemp()
         environments_yaml = os.path.join(self.juju_home, "environments.yaml")
         with open(environments_yaml, "w") as fd:
