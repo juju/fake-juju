@@ -360,7 +360,6 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	//fmt.Println(apiInfo.Addrs[0])
 	jujuHome := osenv.JujuXDGDataHome()
 	fmt.Println(apiInfo.ModelTag.Id())
-	fmt.Println(jujuHome)
 
 	binPath := filepath.Join(jujuHome, "bin")
 	os.Mkdir(binPath, 0755)
@@ -439,7 +438,7 @@ func (s *FakeJujuSuite) TestStart(c *gc.C) {
 			log.Println("Done processing delta")
 		}
 	}
-	log.Println("Stopping juju-sync")
+	log.Println("Stopping fake-juju")
 }
 
 func (s *FakeJujuSuite) handleAddMachine(id string) error  {
@@ -594,10 +593,6 @@ func (s *FakeJujuSuite) startUnit(unit *state.Unit) error  {
 
 func (s *FakeJujuSuite) errorUnit(unit *state.Unit) error  {
 	log.Println("Erroring unit", unit.Name())
-	// err := unit.SetStatus(state.StatusError, "unit errored", nil)
-	// if err != nil {
-	// 	return err
-	// }
 	_, err := unit.SetAgentPresence()
 	if err != nil {
 		return err
