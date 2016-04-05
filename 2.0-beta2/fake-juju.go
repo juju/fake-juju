@@ -257,6 +257,43 @@ func writeProcessInfo(envName string, info *processInfo) error {
 	return ioutil.WriteFile(caCertPath, []byte(info.CACert), 0644)
 }
 
+// Read the failures info file pointed by the FAKE_JUJU_FAILURES environment
+// variable, if any. The format of the file is one entity name per line. If
+// entity is found there, the code in FakeJujuSuite.TestStart will make that
+// entity transition to an error state.
+func readFailuresInfo() (map[string]bool, error) {
+	log.Println("Checking for forced failures")
+	failuresPath := os.Getenv("FAKE_JUJU_FAILURES")
+	if failuresPath == "" {
+		log.Println("No FAKE_JUJU_FAILURES env variable set")
+	}
+	log.Println("Reading failures file", failuresPath)
+	failuresInfo := map[string]bool{}
+	if _, err := os.Stat(failuresPath); os.IsNotExist(err) {
+		log.Println("No failures file found")
+		return failuresInfo, nil
+	}
+	file, err := os.Open(failuresPath)
+	if err != nil {
+		log.Println("Error opening failures file", err)
+		return nil, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	var entity string
+	for scanner.Scan() {
+		entity = scanner.Text()
+		log.Println("Add failure:", entity)
+		failuresInfo[entity] = true
+	}
+	if err := scanner.Err(); err != nil {
+		log.Println("Error reading failures file", err)
+		return nil, err
+	}
+	return failuresInfo, nil
+}
+
 type FakeJujuSuite struct {
 	jujutesting.JujuConnSuite
 
@@ -322,6 +359,8 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	apiInfo := s.APIInfo(c)
 	//fmt.Println(apiInfo.Addrs[0])
 	jujuHome := osenv.JujuXDGDataHome()
+	// IMPORTANT: don't remove this logging because it's used by the
+	// bootstrap command.
 	fmt.Println(apiInfo.ModelTag.Id())
 	fmt.Println(jujuHome)
 
@@ -336,32 +375,40 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	s.fifoPath = filepath.Join(jujuHome, "fifo")
 	syscall.Mknod(s.fifoPath, syscall.S_IFIFO|0666, 0)
 
-
 	// Logging
 	logPath := filepath.Join(jujuHome, "fake-juju.log")
 	s.logFile, err = os.OpenFile(logPath, os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
 	c.Assert(err, gc.IsNil)
 
 	log.SetOutput(s.logFile)
-	log.Println("Set up completed")
+	log.Println("Started fake-juju at", jujuHome)
 
 }
 
 func (s *FakeJujuSuite) TearDownTest(c *gc.C) {
+	log.Println("Tearing down processes")
 	s.JujuConnSuite.TearDownTest(c)
+	log.Println("Closing log file")
 	s.logFile.Close()
 }
 
 func (s *FakeJujuSuite) TestStart(c *gc.C) {
 	watcher := s.State.Watch()
 	go func() {
+		log.Println("Open commands FIFO", s.fifoPath)
 		fd, err := os.Open(s.fifoPath)
+		if err != nil {
+			log.Println("Failed to open commands FIFO")
+		}
 		c.Assert(err, gc.IsNil)
 		scanner := bufio.NewScanner(fd)
+		log.Println("Listen for commands on FIFO", s.fifoPath)
 		scanner.Scan()
+		log.Println("Stopping fake-juju")
 		watcher.Stop()
 	}()
 	for {
+		log.Println("Watching deltas")
 		deltas, err := watcher.Next()
 		log.Println("Got deltas")
 		if err != nil {
@@ -394,10 +441,12 @@ func (s *FakeJujuSuite) TestStart(c *gc.C) {
 			log.Println("Done processing delta")
 		}
 	}
+	log.Println("Stopping fake-juju")
 }
 
 func (s *FakeJujuSuite) handleAddMachine(id string) error  {
 	machine, err := s.State.Machine(id)
+	log.Println("Handle machine", id)
 	if err != nil {
 		return err
 	}
@@ -413,11 +462,13 @@ func (s *FakeJujuSuite) handleAddMachine(id string) error  {
 		}
 	}
 	status, _ := machine.Status()
+	log.Println("Machine has status:", string(status.Status), status.Message)
 	if status.Status == state.StatusPending {
 		if err = s.startMachine(machine); err != nil {
 			return err
 		}
 	} else if status.Status == state.StatusStarted {
+		log.Println("Starting units on machine", id)
 		if _, ok := s.machineStarted[id]; !ok {
 			s.machineStarted[id] = true
 			if err = s.startUnits(machine); err != nil {
@@ -430,6 +481,7 @@ func (s *FakeJujuSuite) handleAddMachine(id string) error  {
 
 func (s *FakeJujuSuite) handleAddUnit(id string) error  {
 	unit, err := s.State.Unit(id)
+	log.Println("Handle unit", id)
 	if err != nil {
 		return err
 	}
@@ -447,8 +499,21 @@ func (s *FakeJujuSuite) handleAddUnit(id string) error  {
 		return nil
 	}
 	status, _ := unit.Status()
+	log.Println("Unit has status", string(status.Status), status.Message)
 	if status.Status != state.StatusActive {
-		if err = s.startUnit(unit); err != nil {
+		failuresInfo, err := readFailuresInfo()
+		if err != nil {
+			return err
+		}
+		if _, ok := failuresInfo["unit-" + id]; ok {
+			log.Println("Error unit", id)
+			err = s.errorUnit(unit);
+		} else {
+			log.Println("Start unit", id)
+			err = s.startUnit(unit);
+		}
+		if err != nil {
+			log.Println("Got error changing unit status", id, err)
 			return err
 		}
 	}
@@ -476,6 +541,15 @@ func (s *FakeJujuSuite) startMachine(machine *state.Machine) error  {
 	}
 	s.State.StartSync()
 	err = machine.WaitAgentPresence(coretesting.LongWait)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *FakeJujuSuite) errorMachine(machine *state.Machine) error  {
+	time.Sleep(500 * time.Millisecond)
+	err := machine.SetStatus(state.StatusError, "machine errored", nil)
 	if err != nil {
 		return err
 	}
@@ -520,6 +594,24 @@ func (s *FakeJujuSuite) startUnit(unit *state.Unit) error  {
 	return nil
 }
 
+func (s *FakeJujuSuite) errorUnit(unit *state.Unit) error  {
+	log.Println("Erroring unit", unit.Name())
+	_, err := unit.SetAgentPresence()
+	if err != nil {
+		return err
+	}
+	s.State.StartSync()
+	err = unit.WaitAgentPresence(coretesting.LongWait)
+	if err != nil {
+		return err
+	}
+	err = unit.SetAgentStatus(state.StatusError, "unit errored", nil)
+	if err != nil {
+		return err
+	}
+	log.Println("Done eroring unit", unit.Name())
+	return nil
+}
 
 func (s *FakeJujuSuite) newInstanceId() instance.Id {
 	s.instanceCount += 1
