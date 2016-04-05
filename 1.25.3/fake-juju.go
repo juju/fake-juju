@@ -349,7 +349,10 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	apiInfo := s.APIInfo(c)
 	//fmt.Println(apiInfo.Addrs[0])
 	jujuHome := osenv.JujuHome()
+	// IMPORTANT: don't remove this logging because it's used by the
+	// bootstrap command.
 	fmt.Println(apiInfo.EnvironTag.Id())
+	fmt.Println(jujuHome)
 
 	binPath := filepath.Join(jujuHome, "bin")
 	os.Mkdir(binPath, 0755)
