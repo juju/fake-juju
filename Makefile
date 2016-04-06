@@ -1,4 +1,4 @@
-VERSIONS = 1.22.6 1.24.6 1.24.7 1.25.0 1.25.3 2.0-beta2
+VERSIONS = 1.24.7 1.25.3 2.0-beta2
 TARBALLS = $(foreach version,$(VERSIONS),juju-core_$(version).tar.gz)
 BUILT_VERSIONS = $(foreach version,$(VERSIONS),$(version)/$(version))
 JUJU_TARBALL = juju-core_$(JUJU_VERSION).tar.gz
