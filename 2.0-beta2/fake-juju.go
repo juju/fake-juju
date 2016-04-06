@@ -500,21 +500,32 @@ func (s *FakeJujuSuite) handleAddUnit(id string) error  {
 	}
 	status, _ := unit.Status()
 	log.Println("Unit has status", string(status.Status), status.Message)
-	if status.Status != state.StatusActive {
+	if status.Status != state.StatusActive && status.Status != state.StatusError {
+		log.Println("Start unit", id)
+		err = s.startUnit(unit);
+		if err != nil {
+			log.Println("Got error changing unit status", id, err)
+			return err
+		}
+	} else if status.Status != state.StatusError {
 		failuresInfo, err := readFailuresInfo()
 		if err != nil {
 			return err
 		}
 		if _, ok := failuresInfo["unit-" + id]; ok {
-			log.Println("Error unit", id)
-			err = s.errorUnit(unit);
-		} else {
-			log.Println("Start unit", id)
-			err = s.startUnit(unit);
-		}
-		if err != nil {
-			log.Println("Got error changing unit status", id, err)
-			return err
+			agentStatus, err := unit.AgentStatus()
+			if err != nil {
+				log.Println("Got error checking agent status", id, err)
+				return err
+			}
+			if agentStatus.Status != state.StatusError {
+				log.Println("Error unit", id)
+				err = s.errorUnit(unit);
+				if err != nil {
+					log.Println("Got error erroring unit status", id, err)
+					return err
+				}
+			}
 		}
 	}
 	return nil
@@ -596,16 +607,7 @@ func (s *FakeJujuSuite) startUnit(unit *state.Unit) error  {
 
 func (s *FakeJujuSuite) errorUnit(unit *state.Unit) error  {
 	log.Println("Erroring unit", unit.Name())
-	_, err := unit.SetAgentPresence()
-	if err != nil {
-		return err
-	}
-	s.State.StartSync()
-	err = unit.WaitAgentPresence(coretesting.LongWait)
-	if err != nil {
-		return err
-	}
-	err = unit.SetAgentStatus(state.StatusError, "unit errored", nil)
+	err := unit.SetAgentStatus(state.StatusError, "unit errored", nil)
 	if err != nil {
 		return err
 	}
