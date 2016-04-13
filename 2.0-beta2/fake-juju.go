@@ -234,17 +234,24 @@ func readProcessInfo() (*processInfo, error) {
 }
 
 func writeProcessInfo(envName string, info *processInfo) error {
+	var err error
 	jujuHome := os.Getenv("JUJU_DATA")
 	infoPath := filepath.Join(jujuHome, "fakejuju")
-	logPath := filepath.Join(jujuHome, "fake-juju.log")
+	logsDir := os.Getenv("FAKE_JUJU_LOGS_DIR")
+	if logsDir == "" {
+		logsDir = jujuHome
+	}
+	logPath := filepath.Join(logsDir, "fake-juju.log")
 	caCertPath := filepath.Join(jujuHome, "cert.ca")
 	envPath := filepath.Join(jujuHome, "environments")
 	os.Mkdir(envPath, 0755)
 	jEnvPath := filepath.Join(envPath, envName + ".jenv")
 	data, _ := goyaml.Marshal(info)
-	err := os.Symlink(filepath.Join(info.WorkDir, "fake-juju.log"), logPath)
-	if err != nil {
-		return err
+	if os.Getenv("FAKE_JUJU_LOGS_DIR") == "" {
+		err = os.Symlink(filepath.Join(info.WorkDir, "fake-juju.log"), logPath)
+		if err != nil {
+			return err
+		}
 	}
 	err = os.Symlink(filepath.Join(info.WorkDir, "environments/dummyenv.jenv"), jEnvPath)
 	if err != nil {
@@ -376,7 +383,11 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	syscall.Mknod(s.fifoPath, syscall.S_IFIFO|0666, 0)
 
 	// Logging
-	logPath := filepath.Join(jujuHome, "fake-juju.log")
+	logsDir := os.Getenv("FAKE_JUJU_LOGS_DIR")
+	if logsDir == "" {
+		logsDir = jujuHome
+	}
+	logPath := filepath.Join(logsDir, "fake-juju.log")
 	s.logFile, err = os.OpenFile(logPath, os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
 	c.Assert(err, gc.IsNil)
 
