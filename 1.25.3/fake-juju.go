@@ -50,6 +50,7 @@ func main() {
 }
 
 type processInfo struct {
+        Username string
         WorkDir string
 	EndpointAddr string
 	Uuid string
@@ -73,7 +74,9 @@ func handleCommand(command string) error {
 }
 
 func bootstrap() error {
+	fmt.Printf("CHAD")
 	envName, config, err := environmentNameAndConfig()
+	fmt.Printf("CHAD %s", envName)
 	if err != nil {
 		return err
 	}
@@ -135,7 +138,7 @@ func apiInfo() error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("{\"environ-uuid\": \"%s\", \"state-servers\": [\"%s\"]}\n", info.Uuid, info.EndpointAddr)
+	fmt.Printf("{\"user\": \"%s\", \"environ-uuid\": \"%s\", \"state-servers\": [\"%s\"]}\n", info.Username, info.Uuid, info.EndpointAddr)
 	return nil
 }
 
@@ -205,6 +208,7 @@ func parseApiInfo(envName string, stdout io.ReadCloser) (*api.Info, error) {
 		EnvironTag: environTag,
 	}
 	err = writeProcessInfo(envName, &processInfo{
+		Username: credentials.User,
 		WorkDir: workDir,
 		EndpointAddr: addresses[0],
 		Uuid: uuid,
