@@ -74,9 +74,7 @@ func handleCommand(command string) error {
 }
 
 func bootstrap() error {
-	fmt.Printf("CHAD")
 	envName, config, err := environmentNameAndConfig()
-	fmt.Printf("CHAD %s", envName)
 	if err != nil {
 		return err
 	}
