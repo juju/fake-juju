@@ -137,7 +137,8 @@ func apiInfo() error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("{\"user\": \"%s\", \"environ-uuid\": \"%s\", \"state-servers\": [\"%s\"]}\n", info.Username, info.Uuid, info.EndpointAddr)
+        username := strings.Replace(string(info.Username), "dummy-", "", 1)
+	fmt.Printf("{\"user\": \"%s\", \"environ-uuid\": \"%s\", \"state-servers\": [\"%s\"]}\n", username, info.Uuid, info.EndpointAddr)
 	return nil
 }
 
