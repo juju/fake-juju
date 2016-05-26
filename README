@@ -24,6 +24,6 @@ sudo apt-get update && sudo apt-get install python-jujuclient
 Building
 ---------
 
-Generally speak, this package is built from a recipe here: https://code.launchpad.net/fake-juju/+recipes
+Generally speaking, this package is built and delivered to PPAs from a recipe here: https://code.launchpad.net/fake-juju/+recipes.
 
 You can build it locally running 'dpkg-buildpackage -b'.

@@ -15,6 +15,7 @@ import (
 	"errors"
 	"log"
 	"encoding/json"
+        "strings"
 
 	"github.com/juju/juju/environs"
 	"github.com/juju/juju/environs/configstore"
@@ -263,6 +264,7 @@ type FakeJujuSuite struct {
 var _ = gc.Suite(&FakeJujuSuite{})
 
 func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
+	var CommandOutput = (*exec.Cmd).CombinedOutput
 	s.JujuConnSuite.SetUpTest(c)
 
 	ports := s.APIState.APIHostPorts()
@@ -323,7 +325,11 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 
 	log.SetOutput(s.logFile)
-	log.Println("Set up completed")
+	dpkgCmd := exec.Command(
+            "dpkg-query", "--showformat='${Version}'", "--show", "fake-juju")
+	out, err := CommandOutput(dpkgCmd)
+        fakeJujuDebVersion := strings.Trim(string(out), "'")
+	log.Printf("Started fake-juju-%s for %s\nJUJU_HOME=%s", fakeJujuDebVersion, version.Current, jujuHome)
 
 }
 

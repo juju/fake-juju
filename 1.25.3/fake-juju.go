@@ -5,16 +5,17 @@ import (
 	"testing"
 	gc "gopkg.in/check.v1"
 	"os"
-	"os/exec"
 	"bufio"
 	"time"
 	"path/filepath"
 	"syscall"
 	"io"
 	"io/ioutil"
+	"os/exec"
 	"errors"
 	"log"
 	"encoding/json"
+        "strings"
 
 	"github.com/juju/juju/environs"
 	"github.com/juju/juju/environs/config"
@@ -50,6 +51,7 @@ func main() {
 }
 
 type processInfo struct {
+        Username string
         WorkDir string
 	EndpointAddr string
 	Uuid string
@@ -135,7 +137,8 @@ func apiInfo() error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("{\"environ-uuid\": \"%s\", \"state-servers\": [\"%s\"]}\n", info.Uuid, info.EndpointAddr)
+        username := strings.Replace(string(info.Username), "dummy-", "", 1)
+	fmt.Printf("{\"user\": \"%s\", \"environ-uuid\": \"%s\", \"state-servers\": [\"%s\"]}\n", username, info.Uuid, info.EndpointAddr)
 	return nil
 }
 
@@ -205,6 +208,7 @@ func parseApiInfo(envName string, stdout io.ReadCloser) (*api.Info, error) {
 		EnvironTag: environTag,
 	}
 	err = writeProcessInfo(envName, &processInfo{
+		Username: credentials.User,
 		WorkDir: workDir,
 		EndpointAddr: addresses[0],
 		Uuid: uuid,
@@ -310,6 +314,7 @@ type FakeJujuSuite struct {
 var _ = gc.Suite(&FakeJujuSuite{})
 
 func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
+	var CommandOutput = (*exec.Cmd).CombinedOutput
 	s.JujuConnSuite.SetUpTest(c)
 
 	ports := s.APIState.APIHostPorts()
@@ -381,9 +386,12 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	s.logFile, err = os.OpenFile(logPath, os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
 	c.Assert(err, gc.IsNil)
 
+	dpkgCmd := exec.Command(
+            "dpkg-query", "--showformat='${Version}'", "--show", "fake-juju")
+	out, err := CommandOutput(dpkgCmd)
 	log.SetOutput(s.logFile)
-	log.Println("Started fake-juju at", jujuHome)
-
+        fakeJujuDebVersion := strings.Trim(string(out), "'")
+	log.Printf("Started fake-juju-%s for %s\nJUJU_HOME=%s", fakeJujuDebVersion, version.Current, jujuHome)
 }
 
 func (s *FakeJujuSuite) TearDownTest(c *gc.C) {
