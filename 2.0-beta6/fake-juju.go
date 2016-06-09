@@ -500,11 +500,13 @@ func (s *FakeJujuSuite) handleAddMachine(id string) error  {
 	if instanceId, _ := machine.InstanceId(); instanceId == "" {
 		err = machine.SetProvisioned(s.newInstanceId(), agent.BootstrapNonce, nil)
 		if err != nil {
+                        log.Println("Got error with SetProvisioned", err)
 			return err
 		}
 		address := network.NewScopedAddress("127.0.0.1", network.ScopeCloudLocal)
 		err = machine.SetProviderAddresses(address)
 		if err != nil {
+                        log.Println("Got error with SetProviderAddresses", err)
 			return err
 		}
 	}
@@ -512,6 +514,7 @@ func (s *FakeJujuSuite) handleAddMachine(id string) error  {
 	log.Println("Machine has status:", string(status.Status), status.Message)
 	if status.Status == states.StatusPending {
 		if err = s.startMachine(machine); err != nil {
+                        log.Println("Got error with startMachine:", err)
 			return err
 		}
 	} else if status.Status == states.StatusStarted {
@@ -519,6 +522,7 @@ func (s *FakeJujuSuite) handleAddMachine(id string) error  {
 		if _, ok := s.machineStarted[id]; !ok {
 			s.machineStarted[id] = true
 			if err = s.startUnits(machine); err != nil {
+                                log.Println("Got error with startUnits", err)
 				return err
 			}
 		}
@@ -530,6 +534,7 @@ func (s *FakeJujuSuite) handleAddUnit(id string) error  {
 	unit, err := s.State.Unit(id)
 	log.Println("Handle unit", id)
 	if err != nil {
+                log.Println("Got error with get unit", err)
 		return err
 	}
 	machineId, err := unit.AssignedMachineId()
@@ -539,6 +544,7 @@ func (s *FakeJujuSuite) handleAddUnit(id string) error  {
 	log.Println("Got machineId", machineId)
 	machine, err := s.State.Machine(machineId)
 	if err != nil {
+                log.Println("Got error with unit AssignedMachineId", err)
 		return err
 	}
 	machineStatus, _ := machine.Status()
