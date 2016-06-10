@@ -389,7 +389,7 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	c.Assert(stateServer.SetAgentVersion(agentVersion), gc.IsNil)
 	address := network.NewScopedAddress("127.0.0.1", network.ScopeCloudLocal)
 	c.Assert(stateServer.SetProviderAddresses(address), gc.IsNil)
-        started := states.StatusInfo{states.StatusStarted, "", nil, nil}
+        started := states.StatusInfo{states.StatusStarted, "",  time.Now()}
 	c.Assert(stateServer.SetStatus(started), gc.IsNil)
 	_, err = stateServer.SetAgentPresence()
 	c.Assert(err, gc.IsNil)
@@ -584,7 +584,7 @@ func (s *FakeJujuSuite) handleAddUnit(id string) error  {
 
 func (s *FakeJujuSuite) startMachine(machine *state.Machine) error  {
 	time.Sleep(500 * time.Millisecond)
-        started := states.StatusInfo{states.StatusStarted, "", nil, nil}
+        started := states.StatusInfo{states.StatusStarted, "", time.Now()}
 	err := machine.SetStatus(started)
 	if err != nil {
 		return err
@@ -613,7 +613,7 @@ func (s *FakeJujuSuite) startMachine(machine *state.Machine) error  {
 func (s *FakeJujuSuite) errorMachine(machine *state.Machine) error  {
 	time.Sleep(500 * time.Millisecond)
         errorStatus := states.StatusInfo{
-                states.StatusError, "machine errored", nil, nil}
+                states.StatusError, "machine errored", time.Now()}
 	err := machine.SetStatus(errorStatus)
 	if err != nil {
 		return err
@@ -639,7 +639,7 @@ func (s *FakeJujuSuite) startUnits(machine *state.Machine) error  {
 }
 
 func (s *FakeJujuSuite) startUnit(unit *state.Unit) error  {
-        active := states.StatusInfo{states.StatusStarted, "", nil, nil}
+        active := states.StatusInfo{states.StatusStarted, "", time.Now()}
 	err := unit.SetStatus(active)
 	if err != nil {
 		return err
@@ -653,7 +653,7 @@ func (s *FakeJujuSuite) startUnit(unit *state.Unit) error  {
 	if err != nil {
 		return err
 	}
-        idleStatus := states.StatusInfo{states.StatusIdle, "", nil, nil}
+        idleStatus := states.StatusInfo{states.StatusIdle, "", time.Now()}
 	err = unit.SetAgentStatus(idleStatus)
 	if err != nil {
 		return err
@@ -664,7 +664,7 @@ func (s *FakeJujuSuite) startUnit(unit *state.Unit) error  {
 func (s *FakeJujuSuite) errorUnit(unit *state.Unit) error  {
 	log.Println("Erroring unit", unit.Name())
         errorStatus := states.StatusInfo{
-                states.StatusIdle, "unit errored", nil, nil}
+                states.StatusIdle, "unit errored", time.Now()}
 	err := unit.SetAgentStatus(errorStatus)
 	if err != nil {
 		return err
