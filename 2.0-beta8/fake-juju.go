@@ -15,6 +15,7 @@ import (
 	"errors"
 	"log"
 	"encoding/json"
+	"strings"
 
 //	"github.com/juju/juju/environs"  XXX 2.0 API change
 //	"github.com/juju/juju/environs/config"  XXX 2.0 API change
@@ -76,11 +77,12 @@ func handleCommand(command string) error {
 }
 
 func bootstrap() error {
-	envName := "dummy"
-	//envName, config, err := environmentNameAndConfig()
-	//if err != nil {
-	//	return err
-	//}
+	argc := len(os.Args)
+	if argc < 4 {
+		return errors.New(
+			"error: controller name and cloud name are required")
+	}
+	envName := os.Args[argc-2]
 	command := exec.Command(os.Args[0])
 	command.Env = os.Environ()
 	command.Env = append(
@@ -132,10 +134,11 @@ func apiInfo() error {
 		return err
 	}
 
-	osenv.SetJujuXDGDataHome(info.WorkDir)
+	jujuHome := os.Getenv("JUJU_DATA")
+	osenv.SetJujuXDGDataHome(jujuHome)
 	cmd := controller.NewShowControllerCommand()
 	ctx, err := coretesting.RunCommandInDir(
-		nil, cmd, []string{}, info.WorkDir)
+		nil, cmd, os.Args[2:], info.WorkDir)
 	if err != nil {
 		return err
 	}
@@ -193,13 +196,10 @@ func parseApiInfo(envName string, stdout io.ReadCloser) (*api.Info, error) {
 
 	osenv.SetJujuXDGDataHome(workDir)
 	store := jujuclient.NewFileClientStore()
-        currentController, err := store.CurrentController()
-        if err != nil {
-                log.Println("Got error with CurrentController", err)
-                return nil, err
-        }
-
-	one, err := store.ControllerByName(currentController)
+	// hard-coded value in juju testing
+	// This will be replaced in JUJU_DATA copy of the juju client config.
+        currentController := "kontroll"
+	one, err := store.ControllerByName("kontroll")
 	if err != nil {
 		return nil, err
 	}
@@ -264,27 +264,30 @@ func writeProcessInfo(envName string, info *processInfo) error {
 		}
 	}
 
-	err = os.Symlink(
+	err = copyClientConfig(
 		filepath.Join(info.WorkDir, "controllers.yaml"),
-		filepath.Join(jujuHome, "controllers.yaml"))
+		filepath.Join(jujuHome, "controllers.yaml"),
+		envName)
 	if err != nil {
 		return err
 	}
-	err = os.Symlink(
+	err = copyClientConfig(
 		filepath.Join(info.WorkDir, "models.yaml"),
-		filepath.Join(jujuHome, "models.yaml"))
+		filepath.Join(jujuHome, "models.yaml"),
+		envName)
 	if err != nil {
 		return err
 	}
-	err = os.Symlink(
+	err = copyClientConfig(
 		filepath.Join(info.WorkDir, "accounts.yaml"),
-		filepath.Join(jujuHome, "accounts.yaml"))
+		filepath.Join(jujuHome, "accounts.yaml"),
+		envName)
 	if err != nil {
 		return err
 	}
-	err = os.Symlink(
-		filepath.Join(info.WorkDir, "current-controller"),
-		filepath.Join(jujuHome, "current-controller"))
+	err = ioutil.WriteFile(
+		filepath.Join(jujuHome, "current-controller"),
+		[]byte(envName), 0644)
 	if err != nil {
 		return err
 	}
@@ -294,6 +297,23 @@ func writeProcessInfo(envName string, info *processInfo) error {
 		return err
 	}
 	return ioutil.WriteFile(caCertPath, []byte(info.CACert), 0644)
+}
+
+func copyClientConfig(src string, dst string, envName string) error {
+	input, err := ioutil.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	// Generated configuration by test fixtures has the controller name
+	// hard-coded to "kontroll". A simple replace should fix this for
+	// clients using this config and expecting a specific controller
+	// name.
+	output := strings.Replace(string(input), "kontroll", envName, -1)
+	err = ioutil.WriteFile(dst, []byte(output), 0644)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // Read the failures info file pointed by the FAKE_JUJU_FAILURES environment
