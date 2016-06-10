@@ -37,7 +37,6 @@ import (
 	goyaml "gopkg.in/yaml.v1"
 	"io"
 	"github.com/juju/juju/cmd/juju/controller"
-	"github.com/juju/juju/cmd/modelcmd"
 	"github.com/juju/juju/jujuclient"
 	"github.com/juju/names"
 )
@@ -194,24 +193,22 @@ func parseApiInfo(envName string, stdout io.ReadCloser) (*api.Info, error) {
 
 	osenv.SetJujuXDGDataHome(workDir)
 	store := jujuclient.NewFileClientStore()
-	currentController, err := modelcmd.ReadCurrentController()
-	if err != nil {
-		return nil, err
-	}
-	actualName, err := modelcmd.ResolveControllerName(store, currentController)
-	if err != nil {
-		return nil, err
-	}
-	one, err := store.ControllerByName(actualName)
+        currentController, err := store.CurrentController()
+        if err != nil {
+                log.Println("Got error with CurrentController", err)
+                return nil, err
+        }
+
+	one, err := store.ControllerByName(currentController)
 	if err != nil {
 		return nil, err
 	}
 
-	accountName, err := store.CurrentAccount(actualName)
+	accountName, err := store.CurrentAccount(currentController)
 	if err != nil {
 		return nil, err
 	}
-	credentials, err := store.AccountByName(actualName, accountName)
+	credentials, err := store.AccountByName(currentController, accountName)
 	if err != nil {
 		return nil, err
 	}
@@ -392,7 +389,8 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	c.Assert(stateServer.SetAgentVersion(agentVersion), gc.IsNil)
 	address := network.NewScopedAddress("127.0.0.1", network.ScopeCloudLocal)
 	c.Assert(stateServer.SetProviderAddresses(address), gc.IsNil)
-	c.Assert(stateServer.SetStatus(states.StatusStarted, "", nil), gc.IsNil)
+        started := states.StatusInfo{states.StatusStarted, "", nil, nil}
+	c.Assert(stateServer.SetStatus(started), gc.IsNil)
 	_, err = stateServer.SetAgentPresence()
 	c.Assert(err, gc.IsNil)
 	s.State.StartSync()
@@ -586,7 +584,8 @@ func (s *FakeJujuSuite) handleAddUnit(id string) error  {
 
 func (s *FakeJujuSuite) startMachine(machine *state.Machine) error  {
 	time.Sleep(500 * time.Millisecond)
-	err := machine.SetStatus(states.StatusStarted, "", nil)
+        started := states.StatusInfo{states.StatusStarted, "", nil, nil}
+	err := machine.SetStatus(started)
 	if err != nil {
 		return err
 	}
@@ -613,7 +612,9 @@ func (s *FakeJujuSuite) startMachine(machine *state.Machine) error  {
 
 func (s *FakeJujuSuite) errorMachine(machine *state.Machine) error  {
 	time.Sleep(500 * time.Millisecond)
-	err := machine.SetStatus(states.StatusError, "machine errored", nil)
+        errorStatus := states.StatusInfo{
+                states.StatusError, "machine errored", nil, nil}
+	err := machine.SetStatus(errorStatus)
 	if err != nil {
 		return err
 	}
@@ -638,7 +639,8 @@ func (s *FakeJujuSuite) startUnits(machine *state.Machine) error  {
 }
 
 func (s *FakeJujuSuite) startUnit(unit *state.Unit) error  {
-	err := unit.SetStatus(states.StatusActive, "", nil)
+        active := states.StatusInfo{states.StatusStarted, "", nil, nil}
+	err := unit.SetStatus(active)
 	if err != nil {
 		return err
 	}
@@ -651,7 +653,8 @@ func (s *FakeJujuSuite) startUnit(unit *state.Unit) error  {
 	if err != nil {
 		return err
 	}
-	err = unit.SetAgentStatus(states.StatusIdle, "", nil)
+        idleStatus := states.StatusInfo{states.StatusIdle, "", nil, nil}
+	err = unit.SetAgentStatus(idleStatus)
 	if err != nil {
 		return err
 	}
@@ -660,7 +663,9 @@ func (s *FakeJujuSuite) startUnit(unit *state.Unit) error  {
 
 func (s *FakeJujuSuite) errorUnit(unit *state.Unit) error  {
 	log.Println("Erroring unit", unit.Name())
-	err := unit.SetAgentStatus(states.StatusError, "unit errored", nil)
+        errorStatus := states.StatusInfo{
+                states.StatusIdle, "unit errored", nil, nil}
+	err := unit.SetAgentStatus(errorStatus)
 	if err != nil {
 		return err
 	}
