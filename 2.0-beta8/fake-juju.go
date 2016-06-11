@@ -16,9 +16,6 @@ import (
 	"log"
 	"strings"
 
-	//	"github.com/juju/juju/environs"  XXX 2.0 API change
-	//	"github.com/juju/juju/environs/config"  XXX 2.0 API change
-	//	"github.com/juju/juju/environs/configstore"  XXX 2.0 API change
 	"github.com/juju/juju/agent"
 	"github.com/juju/juju/api"
 	"github.com/juju/juju/juju/osenv"
@@ -85,8 +82,7 @@ func bootstrap() error {
 	command := exec.Command(os.Args[0])
 	command.Env = os.Environ()
 	command.Env = append(
-		command.Env, "ADMIN_PASSWORD="+"pwd") // XXX 2.0 API change config.AdminSecret())
-	//defaultSeries, _ := config.DefaultSeries()
+		command.Env, "ADMIN_PASSWORD="+"pwd") 
 	defaultSeries := "trusty"
 	command.Env = append(command.Env, "DEFAULT_SERIES="+defaultSeries)
 	stdout, err := command.StdoutPipe()
@@ -162,23 +158,6 @@ func destroyEnvironment() error {
 	}
 	return nil
 }
-
-// XXX Doesn't really fit for 2.0
-// func environmentNameAndConfig() (string, *config.Config, error) {
-// 	jujuHome := os.Getenv("JUJU_DATA")
-// 	osenv.SetJujuXDGDataHome(jujuHome)
-// 	environs, err := environs.ReadEnvirons(
-// 		filepath.Join(jujuHome, "environments.yaml"))
-// 	if err != nil {
-// 		return "", nil, err
-// 	}
-// 	envName := environs.Names()[0]
-// 	config, err := environs.Config(envName)
-// 	if err != nil {
-// 		return "", nil, err
-// 	}
-// 	return envName, config, nil
-// }
 
 func parseApiInfo(envName string, stdout io.ReadCloser) (*api.Info, error) {
 	buffer := bufio.NewReader(stdout)
@@ -376,19 +355,6 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	if os.Getenv("DEFAULT_SERIES") != "" {
 		defaultSeries = os.Getenv("DEFAULT_SERIES")
 	}
-	// XXX 2.0 already has user.
-	//password := "dummy-password"
-	//if os.Getenv("ADMIN_PASSWORD") != "" {
-	//	password = os.Getenv("ADMIN_PASSWORD")
-	//}
-	//_, err = s.State.AddUser("admin", "Admin", password, "dummy-admin")
-	//c.Assert(err, gc.IsNil)
-	//_, err = s.State.AddModelUser(
-	//	state.ModelUserSpec{
-	//		User:        names.NewLocalUserTag("admin"),
-	//		DisplayName: "Admin",
-	//	})
-
 	c.Assert(err, gc.IsNil)
 	err = s.State.UpdateModelConfig(
 		map[string]interface{}{"default-series": defaultSeries}, nil, nil)
