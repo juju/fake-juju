@@ -1,37 +1,37 @@
 package main
 
 import (
-	"fmt"
-	"testing"
-	gc "gopkg.in/check.v1"
-	"os"
-	"os/exec"
 	"bufio"
-	"time"
-	"path/filepath"
-	"syscall"
+	"encoding/json"
+	"errors"
+	"fmt"
+	gc "gopkg.in/check.v1"
 	"io"
 	"io/ioutil"
-	"errors"
 	"log"
-	"encoding/json"
-        "strings"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"syscall"
+	"testing"
+	"time"
 
+	"github.com/juju/juju/agent"
+	"github.com/juju/juju/api"
 	"github.com/juju/juju/environs"
 	"github.com/juju/juju/environs/configstore"
+	"github.com/juju/juju/instance"
 	"github.com/juju/juju/juju/osenv"
-	"github.com/juju/juju/state"
-	"github.com/juju/juju/agent"
-	"github.com/juju/juju/network"
-	"github.com/juju/juju/api"
-	"github.com/juju/names"
-	_ "github.com/juju/juju/provider/maas"
-	coretesting "github.com/juju/juju/testing"
 	jujutesting "github.com/juju/juju/juju/testing"
+	"github.com/juju/juju/network"
+	_ "github.com/juju/juju/provider/maas"
+	"github.com/juju/juju/state"
+	coretesting "github.com/juju/juju/testing"
 	"github.com/juju/juju/testing/factory"
 	"github.com/juju/juju/version"
+	"github.com/juju/names"
 	corecharm "gopkg.in/juju/charm.v5/charmrepo"
-	"github.com/juju/juju/instance"
 	goyaml "gopkg.in/yaml.v1"
 )
 
@@ -50,10 +50,10 @@ func main() {
 }
 
 type processInfo struct {
-        WorkDir string
+	WorkDir      string
 	EndpointAddr string
-	Uuid string
-	CACert string
+	Uuid         string
+	CACert       string
 }
 
 func handleCommand(command string) error {
@@ -79,12 +79,12 @@ func bootstrap() error {
 	}
 	command := exec.Command(os.Args[0])
 	command.Env = os.Environ()
-	command.Env = append(command.Env, "ADMIN_PASSWORD=" + password)
-        stdout, err := command.StdoutPipe()
+	command.Env = append(command.Env, "ADMIN_PASSWORD="+password)
+	stdout, err := command.StdoutPipe()
 	if err != nil {
 		return err
 	}
-	command.Start()	
+	command.Start()
 	apiInfo, err := parseApiInfo(envName, stdout)
 	if err != nil {
 		return err
@@ -143,7 +143,7 @@ func destroyEnvironment() error {
 		return err
 	}
 	fifoPath := filepath.Join(info.WorkDir, "fifo")
-        fd, err := os.OpenFile(fifoPath, os.O_APPEND|os.O_WRONLY, 0600)
+	fd, err := os.OpenFile(fifoPath, os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}
@@ -172,7 +172,7 @@ func environmentNameAndPassword() (string, string, error) {
 }
 
 func parseApiInfo(envName string, stdout io.ReadCloser) (*api.Info, error) {
-        buffer := bufio.NewReader(stdout)
+	buffer := bufio.NewReader(stdout)
 	line, _, err := buffer.ReadLine()
 	if err != nil {
 		return nil, err
@@ -196,17 +196,17 @@ func parseApiInfo(envName string, stdout io.ReadCloser) (*api.Info, error) {
 	endpoint := info.APIEndpoint()
 	addresses := endpoint.Addresses
 	apiInfo := &api.Info{
-		Addrs: addresses,
-		Tag: names.NewLocalUserTag(credentials.User),
-		Password: credentials.Password,
-		CACert: endpoint.CACert,
+		Addrs:      addresses,
+		Tag:        names.NewLocalUserTag(credentials.User),
+		Password:   credentials.Password,
+		CACert:     endpoint.CACert,
 		EnvironTag: environTag,
 	}
 	err = writeProcessInfo(envName, &processInfo{
-		WorkDir: workDir,
+		WorkDir:      workDir,
 		EndpointAddr: addresses[0],
-		Uuid: uuid,
-		CACert: endpoint.CACert,
+		Uuid:         uuid,
+		CACert:       endpoint.CACert,
 	})
 	if err != nil {
 		return nil, err
@@ -235,7 +235,7 @@ func writeProcessInfo(envName string, info *processInfo) error {
 	caCertPath := filepath.Join(jujuHome, "cert.ca")
 	envPath := filepath.Join(jujuHome, "environments")
 	os.Mkdir(envPath, 0755)
-	jEnvPath := filepath.Join(envPath, envName + ".jenv")
+	jEnvPath := filepath.Join(envPath, envName+".jenv")
 	data, _ := goyaml.Marshal(info)
 	err := os.Symlink(filepath.Join(info.WorkDir, "fake-juju.log"), logPath)
 	if err != nil {
@@ -255,10 +255,10 @@ func writeProcessInfo(envName string, info *processInfo) error {
 type FakeJujuSuite struct {
 	jujutesting.JujuConnSuite
 
-	instanceCount int
+	instanceCount  int
 	machineStarted map[string]bool
-	fifoPath string
-	logFile *os.File
+	fifoPath       string
+	logFile        *os.File
 }
 
 var _ = gc.Suite(&FakeJujuSuite{})
@@ -287,9 +287,9 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	// Create a machine to manage the environment.
 	stateServer := s.Factory.MakeMachine(c, &factory.MachineParams{
 		InstanceId: s.newInstanceId(),
-		Nonce:    agent.BootstrapNonce,
+		Nonce:      agent.BootstrapNonce,
 		Jobs:       []state.MachineJob{state.JobManageEnviron, state.JobHostUnits},
-		Series: "trusty",
+		Series:     "trusty",
 	})
 	c.Assert(stateServer.SetAgentVersion(version.Current), gc.IsNil)
 	address := network.NewScopedAddress("127.0.0.1", network.ScopeCloudLocal)
@@ -313,22 +313,21 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	fakeSSHPath := filepath.Join(binPath, "ssh")
 	err = ioutil.WriteFile(fakeSSHPath, fakeSSHData, 0755)
 	c.Assert(err, gc.IsNil)
-	os.Setenv("PATH", binPath + ":" + os.Getenv("PATH"))
+	os.Setenv("PATH", binPath+":"+os.Getenv("PATH"))
 
 	s.fifoPath = filepath.Join(jujuHome, "fifo")
 	syscall.Mknod(s.fifoPath, syscall.S_IFIFO|0666, 0)
 
-
 	// Logging
 	logPath := filepath.Join(jujuHome, "fake-juju.log")
-	s.logFile, err = os.OpenFile(logPath, os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
+	s.logFile, err = os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	c.Assert(err, gc.IsNil)
 
 	log.SetOutput(s.logFile)
 	dpkgCmd := exec.Command(
-            "dpkg-query", "--showformat='${Version}'", "--show", "fake-juju")
+		"dpkg-query", "--showformat='${Version}'", "--show", "fake-juju")
 	out, err := CommandOutput(dpkgCmd)
-        fakeJujuDebVersion := strings.Trim(string(out), "'")
+	fakeJujuDebVersion := strings.Trim(string(out), "'")
 	log.Printf("Started fake-juju-%s for %s\nJUJU_HOME=%s", fakeJujuDebVersion, version.Current, jujuHome)
 
 }
@@ -384,7 +383,7 @@ func (s *FakeJujuSuite) TestStart(c *gc.C) {
 	}
 }
 
-func (s *FakeJujuSuite) handleAddMachine(id string) error  {
+func (s *FakeJujuSuite) handleAddMachine(id string) error {
 	machine, err := s.State.Machine(id)
 	if err != nil {
 		return err
@@ -392,27 +391,27 @@ func (s *FakeJujuSuite) handleAddMachine(id string) error  {
 	if instanceId, _ := machine.InstanceId(); instanceId == "" {
 		err = machine.SetProvisioned(s.newInstanceId(), agent.BootstrapNonce, nil)
 		if err != nil {
-                        log.Println("Got error with SetProvisioned", err)
+			log.Println("Got error with SetProvisioned", err)
 			return err
 		}
 		address := network.NewScopedAddress("127.0.0.1", network.ScopeCloudLocal)
 		err = machine.SetProviderAddresses(address)
 		if err != nil {
-                        log.Println("Got error with SetProviderAddresses", err)
+			log.Println("Got error with SetProviderAddresses", err)
 			return err
 		}
 	}
 	status, _ := machine.Status()
 	if status.Status == state.StatusPending {
 		if err = s.startMachine(machine); err != nil {
-                        log.Println("Got error with startMachine:", err)
+			log.Println("Got error with startMachine:", err)
 			return err
 		}
 	} else if status.Status == state.StatusStarted {
 		if _, ok := s.machineStarted[id]; !ok {
 			s.machineStarted[id] = true
 			if err = s.startUnits(machine); err != nil {
-                                log.Println("Got error with startUnits", err)
+				log.Println("Got error with startUnits", err)
 				return err
 			}
 		}
@@ -420,10 +419,10 @@ func (s *FakeJujuSuite) handleAddMachine(id string) error  {
 	return nil
 }
 
-func (s *FakeJujuSuite) handleAddUnit(id string) error  {
+func (s *FakeJujuSuite) handleAddUnit(id string) error {
 	unit, err := s.State.Unit(id)
 	if err != nil {
-                log.Println("Got error with get unit", err)
+		log.Println("Got error with get unit", err)
 		return err
 	}
 	machineId, err := unit.AssignedMachineId()
@@ -433,7 +432,7 @@ func (s *FakeJujuSuite) handleAddUnit(id string) error  {
 	log.Println("Got machineId", machineId)
 	machine, err := s.State.Machine(machineId)
 	if err != nil {
-                log.Println("Got error with unit AssignedMachineId", err)
+		log.Println("Got error with unit AssignedMachineId", err)
 		return err
 	}
 	machineStatus, _ := machine.Status()
@@ -449,7 +448,7 @@ func (s *FakeJujuSuite) handleAddUnit(id string) error  {
 	return nil
 }
 
-func (s *FakeJujuSuite) startMachine(machine *state.Machine) error  {
+func (s *FakeJujuSuite) startMachine(machine *state.Machine) error {
 	time.Sleep(500 * time.Millisecond)
 	err := machine.SetStatus(state.StatusStarted, "", nil)
 	if err != nil {
@@ -471,7 +470,7 @@ func (s *FakeJujuSuite) startMachine(machine *state.Machine) error  {
 	return nil
 }
 
-func (s *FakeJujuSuite) startUnits(machine *state.Machine) error  {
+func (s *FakeJujuSuite) startUnits(machine *state.Machine) error {
 	units, err := machine.Units()
 	if err != nil {
 		return err
@@ -488,7 +487,7 @@ func (s *FakeJujuSuite) startUnits(machine *state.Machine) error  {
 	return nil
 }
 
-func (s *FakeJujuSuite) startUnit(unit *state.Unit) error  {
+func (s *FakeJujuSuite) startUnit(unit *state.Unit) error {
 	err := unit.SetStatus(state.StatusActive, "", nil)
 	if err != nil {
 		return err
@@ -508,7 +507,6 @@ func (s *FakeJujuSuite) startUnit(unit *state.Unit) error  {
 	}
 	return nil
 }
-
 
 func (s *FakeJujuSuite) newInstanceId() instance.Id {
 	s.instanceCount += 1
