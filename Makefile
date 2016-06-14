@@ -5,7 +5,7 @@ JUJU_TARBALL = juju-core_$(JUJU_VERSION).tar.gz
 JUJU_PATCH = patches/juju-core_$(JUJU_VERSION).patch
 
 ci-test:
-	sudo apt install \
+	sudo apt-get -y install \
 		wget \
 		golang-go \
 		python-jujuclient \
