@@ -1,8 +1,17 @@
-VERSIONS = 1.24.7 1.25.3 2.0-beta8
+VERSIONS = 2.0-beta8
 TARBALLS = $(foreach version,$(VERSIONS),juju-core_$(version).tar.gz)
 BUILT_VERSIONS = $(foreach version,$(VERSIONS),$(version)/$(version))
 JUJU_TARBALL = juju-core_$(JUJU_VERSION).tar.gz
 JUJU_PATCH = patches/juju-core_$(JUJU_VERSION).patch
+
+ci-test:
+	sudo apt install \
+		wget \
+		golang-go \
+		python-jujuclient \
+		golang-1.6
+	make test
+.PHONY: ci-test
 
 build: $(BUILT_VERSIONS)
 .PHONY: build
@@ -42,6 +51,7 @@ clean-common:
 	rm -f tests/*.pyc
 .PHONY: clean-common
 
+ci-test: $(BUILT_VERSIONS)
 
 # Use xargs here so that we don't throw away the return codes, and correctly fail if any of the tests fail
 test: $(BUILT_VERSIONS)
