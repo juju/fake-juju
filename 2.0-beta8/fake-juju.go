@@ -10,15 +10,12 @@ import (
 	"syscall"
 	"testing"
 	"time"
-	//"io"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
 	"log"
+	"strings"
 
-	//	"github.com/juju/juju/environs"  XXX 2.0 API change
-	//	"github.com/juju/juju/environs/config"  XXX 2.0 API change
-	//	"github.com/juju/juju/environs/configstore"  XXX 2.0 API change
 	"github.com/juju/juju/agent"
 	"github.com/juju/juju/api"
 	"github.com/juju/juju/juju/osenv"
@@ -27,7 +24,6 @@ import (
 	states "github.com/juju/juju/status"
 	//"github.com/juju/names"
 	"github.com/juju/juju/cmd/juju/controller"
-	"github.com/juju/juju/cmd/modelcmd"
 	"github.com/juju/juju/instance"
 	jujutesting "github.com/juju/juju/juju/testing"
 	"github.com/juju/juju/jujuclient"
@@ -77,16 +73,16 @@ func handleCommand(command string) error {
 }
 
 func bootstrap() error {
-	envName := "dummy"
-	//envName, config, err := environmentNameAndConfig()
-	//if err != nil {
-	//	return err
-	//}
+	argc := len(os.Args)
+	if argc < 4 {
+		return errors.New(
+			"error: controller name and cloud name are required")
+	}
+	envName := os.Args[argc-2]
 	command := exec.Command(os.Args[0])
 	command.Env = os.Environ()
 	command.Env = append(
-		command.Env, "ADMIN_PASSWORD="+"pwd") // XXX 2.0 API change config.AdminSecret())
-	//defaultSeries, _ := config.DefaultSeries()
+		command.Env, "ADMIN_PASSWORD="+"pwd") 
 	defaultSeries := "trusty"
 	command.Env = append(command.Env, "DEFAULT_SERIES="+defaultSeries)
 	stdout, err := command.StdoutPipe()
@@ -133,10 +129,11 @@ func apiInfo() error {
 		return err
 	}
 
-	osenv.SetJujuXDGDataHome(info.WorkDir)
+	jujuHome := os.Getenv("JUJU_DATA")
+	osenv.SetJujuXDGDataHome(jujuHome)
 	cmd := controller.NewShowControllerCommand()
 	ctx, err := coretesting.RunCommandInDir(
-		nil, cmd, []string{}, info.WorkDir)
+		nil, cmd, os.Args[2:], info.WorkDir)
 	if err != nil {
 		return err
 	}
@@ -162,23 +159,6 @@ func destroyEnvironment() error {
 	return nil
 }
 
-// XXX Doesn't really fit for 2.0
-// func environmentNameAndConfig() (string, *config.Config, error) {
-// 	jujuHome := os.Getenv("JUJU_DATA")
-// 	osenv.SetJujuXDGDataHome(jujuHome)
-// 	environs, err := environs.ReadEnvirons(
-// 		filepath.Join(jujuHome, "environments.yaml"))
-// 	if err != nil {
-// 		return "", nil, err
-// 	}
-// 	envName := environs.Names()[0]
-// 	config, err := environs.Config(envName)
-// 	if err != nil {
-// 		return "", nil, err
-// 	}
-// 	return envName, config, nil
-// }
-
 func parseApiInfo(envName string, stdout io.ReadCloser) (*api.Info, error) {
 	buffer := bufio.NewReader(stdout)
 	line, _, err := buffer.ReadLine()
@@ -194,24 +174,19 @@ func parseApiInfo(envName string, stdout io.ReadCloser) (*api.Info, error) {
 
 	osenv.SetJujuXDGDataHome(workDir)
 	store := jujuclient.NewFileClientStore()
-	currentController, err := modelcmd.ReadCurrentController()
-	if err != nil {
-		return nil, err
-	}
-	actualName, err := modelcmd.ResolveControllerName(store, currentController)
-	if err != nil {
-		return nil, err
-	}
-	one, err := store.ControllerByName(actualName)
+	// hard-coded value in juju testing
+	// This will be replaced in JUJU_DATA copy of the juju client config.
+        currentController := "kontroll"
+	one, err := store.ControllerByName("kontroll")
 	if err != nil {
 		return nil, err
 	}
 
-	accountName, err := store.CurrentAccount(actualName)
+	accountName, err := store.CurrentAccount(currentController)
 	if err != nil {
 		return nil, err
 	}
-	credentials, err := store.AccountByName(actualName, accountName)
+	credentials, err := store.AccountByName(currentController, accountName)
 	if err != nil {
 		return nil, err
 	}
@@ -267,27 +242,30 @@ func writeProcessInfo(envName string, info *processInfo) error {
 		}
 	}
 
-	err = os.Symlink(
+	err = copyClientConfig(
 		filepath.Join(info.WorkDir, "controllers.yaml"),
-		filepath.Join(jujuHome, "controllers.yaml"))
+		filepath.Join(jujuHome, "controllers.yaml"),
+		envName)
 	if err != nil {
 		return err
 	}
-	err = os.Symlink(
+	err = copyClientConfig(
 		filepath.Join(info.WorkDir, "models.yaml"),
-		filepath.Join(jujuHome, "models.yaml"))
+		filepath.Join(jujuHome, "models.yaml"),
+		envName)
 	if err != nil {
 		return err
 	}
-	err = os.Symlink(
+	err = copyClientConfig(
 		filepath.Join(info.WorkDir, "accounts.yaml"),
-		filepath.Join(jujuHome, "accounts.yaml"))
+		filepath.Join(jujuHome, "accounts.yaml"),
+		envName)
 	if err != nil {
 		return err
 	}
-	err = os.Symlink(
-		filepath.Join(info.WorkDir, "current-controller"),
-		filepath.Join(jujuHome, "current-controller"))
+	err = ioutil.WriteFile(
+		filepath.Join(jujuHome, "current-controller"),
+		[]byte(envName), 0644)
 	if err != nil {
 		return err
 	}
@@ -297,6 +275,23 @@ func writeProcessInfo(envName string, info *processInfo) error {
 		return err
 	}
 	return ioutil.WriteFile(caCertPath, []byte(info.CACert), 0644)
+}
+
+func copyClientConfig(src string, dst string, envName string) error {
+	input, err := ioutil.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	// Generated configuration by test fixtures has the controller name
+	// hard-coded to "kontroll". A simple replace should fix this for
+	// clients using this config and expecting a specific controller
+	// name.
+	output := strings.Replace(string(input), "kontroll", envName, -1)
+	err = ioutil.WriteFile(dst, []byte(output), 0644)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // Read the failures info file pointed by the FAKE_JUJU_FAILURES environment
@@ -360,19 +355,6 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	if os.Getenv("DEFAULT_SERIES") != "" {
 		defaultSeries = os.Getenv("DEFAULT_SERIES")
 	}
-	// XXX 2.0 already has user.
-	//password := "dummy-password"
-	//if os.Getenv("ADMIN_PASSWORD") != "" {
-	//	password = os.Getenv("ADMIN_PASSWORD")
-	//}
-	//_, err = s.State.AddUser("admin", "Admin", password, "dummy-admin")
-	//c.Assert(err, gc.IsNil)
-	//_, err = s.State.AddModelUser(
-	//	state.ModelUserSpec{
-	//		User:        names.NewLocalUserTag("admin"),
-	//		DisplayName: "Admin",
-	//	})
-
 	c.Assert(err, gc.IsNil)
 	err = s.State.UpdateModelConfig(
 		map[string]interface{}{"default-series": defaultSeries}, nil, nil)
@@ -392,7 +374,13 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	c.Assert(stateServer.SetAgentVersion(agentVersion), gc.IsNil)
 	address := network.NewScopedAddress("127.0.0.1", network.ScopeCloudLocal)
 	c.Assert(stateServer.SetProviderAddresses(address), gc.IsNil)
-	c.Assert(stateServer.SetStatus(states.StatusStarted, "", nil), gc.IsNil)
+	now := time.Now()
+	sInfo := states.StatusInfo{
+		Status:  states.StatusStarted,
+		Message: "",
+		Since:   &now,
+	}
+	c.Assert(stateServer.SetStatus(sInfo), gc.IsNil)
 	_, err = stateServer.SetAgentPresence()
 	c.Assert(err, gc.IsNil)
 	s.State.StartSync()
@@ -586,7 +574,13 @@ func (s *FakeJujuSuite) handleAddUnit(id string) error {
 
 func (s *FakeJujuSuite) startMachine(machine *state.Machine) error {
 	time.Sleep(500 * time.Millisecond)
-	err := machine.SetStatus(states.StatusStarted, "", nil)
+	now := time.Now()
+	sInfo := states.StatusInfo{
+		Status:  states.StatusStarted,
+		Message: "",
+		Since:   &now,
+	}
+	err := machine.SetStatus(sInfo)
 	if err != nil {
 		return err
 	}
@@ -613,7 +607,13 @@ func (s *FakeJujuSuite) startMachine(machine *state.Machine) error {
 
 func (s *FakeJujuSuite) errorMachine(machine *state.Machine) error {
 	time.Sleep(500 * time.Millisecond)
-	err := machine.SetStatus(states.StatusError, "machine errored", nil)
+	now := time.Now()
+	sInfo := states.StatusInfo{
+		Status:  states.StatusError,
+		Message: "machine errored",
+		Since:   &now,
+	}
+	err := machine.SetStatus(sInfo)
 	if err != nil {
 		return err
 	}
@@ -638,7 +638,13 @@ func (s *FakeJujuSuite) startUnits(machine *state.Machine) error {
 }
 
 func (s *FakeJujuSuite) startUnit(unit *state.Unit) error {
-	err := unit.SetStatus(states.StatusActive, "", nil)
+	now := time.Now()
+	sInfo := states.StatusInfo{
+		Status:  states.StatusStarted,
+		Message: "",
+		Since:   &now,
+	}
+	err := unit.SetStatus(sInfo)
 	if err != nil {
 		return err
 	}
@@ -651,7 +657,12 @@ func (s *FakeJujuSuite) startUnit(unit *state.Unit) error {
 	if err != nil {
 		return err
 	}
-	err = unit.SetAgentStatus(states.StatusIdle, "", nil)
+	idleInfo := states.StatusInfo{
+		Status:  states.StatusIdle,
+		Message: "",
+		Since:   &now,
+	}
+	err = unit.SetAgentStatus(idleInfo)
 	if err != nil {
 		return err
 	}
@@ -660,7 +671,13 @@ func (s *FakeJujuSuite) startUnit(unit *state.Unit) error {
 
 func (s *FakeJujuSuite) errorUnit(unit *state.Unit) error {
 	log.Println("Erroring unit", unit.Name())
-	err := unit.SetAgentStatus(states.StatusError, "unit errored", nil)
+	now := time.Now()
+	sInfo := states.StatusInfo{
+		Status:  states.StatusIdle,
+		Message: "unit errored",
+		Since:   &now,
+	}
+	err := unit.SetAgentStatus(sInfo)
 	if err != nil {
 		return err
 	}
