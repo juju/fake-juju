@@ -1,8 +1,18 @@
 VERSIONS = 1.24.7 1.25.3 2.0-beta9
+VERSIONS = 1.24.7 1.25.3 2.0-beta8
+GO_VERSION = 1.6
 TARBALLS = $(foreach version,$(VERSIONS),juju-core_$(version).tar.gz)
 BUILT_VERSIONS = $(foreach version,$(VERSIONS),$(version)/$(version))
 JUJU_TARBALL = juju-core_$(JUJU_VERSION).tar.gz
 JUJU_PATCH = patches/juju-core_$(JUJU_VERSION).patch
+
+.PHONY: build
+build: $(BUILT_VERSIONS)
+
+$(BUILT_VERSIONS):
+	for VERSION in $(VERSIONS); do \
+	    $(MAKE) build-common JUJU_VERSION=$$VERSION; \
+	done
 
 .PHONY: ci-test
 ci-test:
@@ -13,19 +23,11 @@ ci-test:
 		golang-1.6
 	make test
 
-.PHONY: build
-build: $(BUILT_VERSIONS)
-
-$(BUILT_VERSIONS):
-	for VERSION in $(VERSIONS); do \
-	    $(MAKE) build-common JUJU_VERSION=$$VERSION; \
-	done
-
 .PHONY: build-common
 build-common: $(JUJU_TARBALL) $(JUJU_PATCH)
 	tar -C $(JUJU_VERSION) --strip=1 -z -xf $(JUJU_TARBALL)
 	patch -p0 < $(JUJU_PATCH)
-	cd $(JUJU_VERSION) && GOPATH=$(shell pwd)/$(JUJU_VERSION) go build
+	cd $(JUJU_VERSION) && GOPATH=$(shell pwd)/$(JUJU_VERSION) PATH=/usr/lib/go-$(GO_VERSION)/bin go build
 
 .PHONY: install
 install: 
