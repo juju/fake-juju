@@ -3,7 +3,7 @@ Maintainer: Free Ekanayaka <free.ekanayaka@canonical.com>
 Section: devel
 Priority: optional
 Standards-Version: 3.9.2
-Build-Depends: debhelper (>= 9), wget, python-jujuclient, golang-1.6
+Build-Depends: debhelper (>= 9), wget, python-jujuclient, golang-1.6, golang
 
 Package: fake-juju
 Architecture: any
