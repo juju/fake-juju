@@ -1,3 +1,4 @@
+VERSIONS = 1.24.7 1.25.3 2.0-beta9
 VERSIONS = 1.24.7 1.25.3 2.0-beta8
 GO_VERSION = 1.6
 TARBALLS = $(foreach version,$(VERSIONS),juju-core_$(version).tar.gz)
