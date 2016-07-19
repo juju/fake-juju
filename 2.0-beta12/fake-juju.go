@@ -181,10 +181,7 @@ func parseApiInfo(envName string, stdout io.ReadCloser) (*api.Info, error) {
 		return nil, err
 	}
 
-	fmt.Println("CHAD cloud controller info", one.Cloud)
 	accountDetails, err := store.AccountDetails(currentController)
-	fmt.Println("CHAD accountdetails user", accountDetails.User)
-	fmt.Println("CHAD accountdetails password", accountDetails.Password)
 	if err != nil {
 		return nil, err
 	}
