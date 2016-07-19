@@ -181,18 +181,14 @@ func parseApiInfo(envName string, stdout io.ReadCloser) (*api.Info, error) {
 		return nil, err
 	}
 
-	accountName, err := store.CurrentAccount(currentController)
-	if err != nil {
-		return nil, err
-	}
-	credentials, err := store.AccountByName(currentController, accountName)
+	accountDetails, err := store.AccountDetails(currentController)
 	if err != nil {
 		return nil, err
 	}
 	apiInfo := &api.Info{
 		Addrs:    one.APIEndpoints,
-		Tag:      names.NewUserTag(credentials.User),
-		Password: credentials.Password,
+		Tag:      names.NewUserTag(accountDetails.User),
+		Password: accountDetails.Password,
 		CACert:   one.CACert,
 		ModelTag: names.NewModelTag(uuid),
 	}
