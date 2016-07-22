@@ -1,5 +1,5 @@
 JUJU1_VERSIONS = 1.24.7 1.25.3
-JUJU2_VERSIONS = 2.0-beta12
+JUJU2_VERSIONS = 2.0-beta13
 VERSIONS = $(JUJU1_VERSIONS) $(JUJU2_VERSIONS)
 GO_VERSION = 1.6
 TARBALLS = $(foreach version,$(VERSIONS),juju-core_$(version).tar.gz)
