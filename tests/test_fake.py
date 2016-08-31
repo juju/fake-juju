@@ -29,7 +29,15 @@ def _bootstrap(name, type, env):
         endpoint = "wss://" + str(api_info["state-servers"][0]) + "/"
         return endpoint
 
-    raise NotImplementedError
+    args = [JUJU_FAKE, "bootstrap", "--no-gui", name, type]
+    subprocess.check_call(args, env=env)
+
+    args = [JUJU_FAKE, "show-controller", "--format", "json", name]
+    output = subprocess.check_output(args, env=env)
+    api_info = json.loads(output)
+    endpoints = api_info[name]["details"]["api-endpoints"]
+    endpoint = "wss://" + str(endpoints[0]) + "/"
+    return endpoint
 
 
 class JujuFakeTest(TestCase):

@@ -50,7 +50,7 @@ def prepare(name, type, cfgdir, env, version=None):
             fd.write(ENVIRONMENTS_YAML.format(**locals()))
         env["JUJU_HOME"] = cfgdir
     else:
-        raise NotImplementedError
+        env["JUJU_DATA"] = cfgdir
 
 
 def connect(endpoint, version=None):
