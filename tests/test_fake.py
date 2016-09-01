@@ -7,7 +7,6 @@ import shutil
 import subprocess
 import tempfile
 from unittest import TestCase
-from unittest.case import SkipTest
 
 from . import _jujuclient
 
@@ -103,7 +102,7 @@ class JujuFakeTest(TestCase):
             self.maxDiff = None
             enqueuedstr = result["results"][0]["enqueued"]
             enqueued = datetime.datetime.strptime(
-                enqueuedstr,"%Y-%m-%dT%H:%M:%SZ")
+                enqueuedstr, "%Y-%m-%dT%H:%M:%SZ")
             self.assertLess(enqueued - now, datetime.timedelta(seconds=1))
             self.assertEqual(
                 {"results": [

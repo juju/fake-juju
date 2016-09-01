@@ -1,10 +1,6 @@
 
 import os.path
 import ssl
-# XXX No support for cert files in Environment._http_conn, so
-# add it via monkey patching.
-if hasattr(ssl, "_create_unverified_context"):
-    ssl._create_default_https_context = ssl._create_unverified_context
 import sys
 
 try:
@@ -13,6 +9,12 @@ try:
 except ImportError:
     sys.exit("latest jujuclient not installed "
              "(try python -m pip install jujuclient)")
+
+
+# XXX No support for cert files in Environment._http_conn, so
+# add it via monkey patching.
+if hasattr(ssl, "_create_unverified_context"):
+    ssl._create_default_https_context = ssl._create_unverified_context
 
 
 ENVIRONMENTS_YAML = """environments:
