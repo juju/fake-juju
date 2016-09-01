@@ -25,7 +25,7 @@ def _bootstrap(name, type, env):
         subprocess.check_call([JUJU_FAKE, "bootstrap", "-e", name], env=env)
 
         output = subprocess.check_output([JUJU_FAKE, "api-info"], env=env)
-        api_info = json.loads(output)
+        api_info = json.loads(output.decode())
         endpoint = "wss://" + str(api_info["state-servers"][0]) + "/"
         return endpoint
 
@@ -34,7 +34,7 @@ def _bootstrap(name, type, env):
 
     args = [JUJU_FAKE, "show-controller", "--format", "json", name]
     output = subprocess.check_output(args, env=env)
-    api_info = json.loads(output)
+    api_info = json.loads(output.decode())
     endpoints = api_info[name]["details"]["api-endpoints"]
     endpoint = "wss://" + str(endpoints[0]) + "/"
     return endpoint

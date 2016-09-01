@@ -20,7 +20,7 @@ $(BUILT_VERSIONS):
 
 .PHONY: ci-test
 ci-test:
-	python -m pip install jujuclient
+	python3 -m pip install jujuclient
 	sudo apt-get -y install --force-yes \
 		wget \
 		golang-go \
@@ -60,7 +60,7 @@ clean-common:
 .PHONY: test
 # Use xargs here so that we don't throw away the return codes, and correctly fail if any of the tests fail
 test: $(BUILT_VERSIONS)
-	@echo -n $(VERSIONS) | xargs -t -d' ' -I {} env JUJU_VERSION={} python -m unittest tests.test_fake
+	@echo -n $(VERSIONS) | xargs -t -d' ' -I {} env JUJU_VERSION={} python3 -m unittest tests.test_fake
 
 juju-core_%.tar.gz:
 	wget https://launchpad.net/juju-core/$(shell ((echo $* | grep -q beta) && echo trunk) || (echo $* | cut -f 1,2 -d .))/$*/+download/$@
