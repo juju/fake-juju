@@ -34,14 +34,30 @@ def prepare(name, type, cfgdir, env, version=None):
         env["JUJU_DATA"] = cfgdir
 
 
-def connect(endpoint, version=None):
+def connect(endpoint, password, uuid, version=None):
     """Return a connected client to the Juju API endpoint."""
     JujuClient = Juju2Client
-    if str(version).startswith("1"):
+    midpath = "model"
+    if str(version).startswith("1."):
         JujuClient = Juju1Client
+        midpath = "environment"
+    endpoint = "/".join(["wss:/", endpoint, midpath, uuid, "api"])
 
     # TODO make use of the cert
     # ca_cert = os.path.join(self.juju_home, "cert.ca")
     client = JujuClient(endpoint)
-    client.login("test")
+    client.login(password)
     return client
+
+
+class Juju2Client(Juju2Client):
+    """Fixes busted code."""
+
+    def run_on_all_machines(self, command, timeout=None):
+        """Run the given shell command on all machines in the environment."""
+        return self._rpc({
+            "type": self.actions.name,
+            "version": self.actions.version,
+            "request": "RunOnAllMachines",
+            "params": {"commands": command,
+                       "timeout": timeout}})
