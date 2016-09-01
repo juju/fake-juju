@@ -1,5 +1,5 @@
---- 2.0-beta16/src/github.com/juju/juju/testcharms/charm.go	2016-03-10 13:45:57.000000000 +0100
-+++ 2.0-beta16/src/github.com/juju/juju/testcharms/charm.go	2016-03-21 10:46:24.312966629 +0100
+--- 2.0-beta17/src/github.com/juju/juju/testcharms/charm.go	2016-03-10 13:45:57.000000000 +0100
++++ 2.0-beta17/src/github.com/juju/juju/testcharms/charm.go	2016-03-21 10:46:24.312966629 +0100
 @@ -17,7 +17,9 @@
  )
  
@@ -11,8 +11,8 @@
  
  // UploadCharm uploads a charm using the given charm store client, and returns
  // the resulting charm URL and charm.
---- 2.0-beta16/src/github.com/juju/juju/provider/dummy/environs.go	2015-07-06 15:01:14.200568258 +0200
-+++ 2.0-beta16/src/github.com/juju/juju/provider/dummy/environs.go	2015-07-06 15:18:32.648549661 +0200
+--- 2.0-beta17/src/github.com/juju/juju/provider/dummy/environs.go	2015-07-06 15:01:14.200568258 +0200
++++ 2.0-beta17/src/github.com/juju/juju/provider/dummy/environs.go	2015-07-06 15:18:32.648549661 +0200
 @@ -633,9 +633,9 @@
  
  // PrecheckInstance is specified in the state.Prechecker interface.
@@ -26,8 +26,8 @@
  	return nil
  }
  
---- 2.0-beta16/src/github.com/juju/juju/testing/cert.go	2016-03-18 09:25:34 +0000
-+++ 2.0-beta16/src/github.com/juju/juju/testing/cert.go	2016-03-18 09:26:04 +0000
+--- 2.0-beta17/src/github.com/juju/juju/testing/cert.go	2016-03-18 09:25:34 +0000
++++ 2.0-beta17/src/github.com/juju/juju/testing/cert.go	2016-03-18 09:26:04 +0000
 @@ -52,7 +52,7 @@
  }
  
