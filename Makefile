@@ -20,10 +20,10 @@ $(BUILT_VERSIONS):
 
 .PHONY: ci-test
 ci-test:
+	python -m pip install jujuclient
 	sudo apt-get -y install --force-yes \
 		wget \
 		golang-go \
-		python-jujuclient \
 		golang-1.6
 	make test
 

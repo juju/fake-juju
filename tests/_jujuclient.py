@@ -1,37 +1,18 @@
 
 import os.path
-
 import ssl
 # XXX No support for cert files in Environment._http_conn, so
 # add it via monkey patching.
 if hasattr(ssl, "_create_unverified_context"):
     ssl._create_default_https_context = ssl._create_unverified_context
+import sys
 
 try:
     from jujuclient.juju1.environment import Environment as Juju1Client
     from jujuclient.juju2.environment import Environment as Juju2Client
 except ImportError:
-    from jujuclient import Environment as Juju1Client
-
-    class Juju2Client(object):
-
-        def __init__(self, endpoint):
-            self.endpoint = endpoint
-
-        def login(self, username):
-            raise NotImplementedError
-
-        def info(self):
-            raise NotImplementedError
-
-        def add_local_charm_dir(self, dirname, series):
-            raise NotImplementedError
-
-        def deploy(self, name, charmURL, num_units):
-            raise NotImplementedError
-
-        def run_on_all_machines(self, command, timeout):
-            raise NotImplementedError
+    sys.exit("latest jujuclient not installed "
+             "(try python -m pip install jujuclient)")
 
 
 ENVIRONMENTS_YAML = """environments:
