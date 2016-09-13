@@ -65,8 +65,7 @@ test: $(BUILT_VERSIONS)
 
 juju-core_%.tar.gz:
 	case $* in \
-		1.*) \
-			wget https://launchpad.net/juju-core/$(shell ((echo $* | grep -q beta) && echo trunk) || (echo $* | cut -f 1,2 -d .))/$*/+download/$@;; \
-		2.*) \
-	    	wget https://launchpad.net/juju/$(shell (echo $* | cut -f 1 -d - | cut -f 1,2 -d .))/$*/+download/$@;; \
-	esac
+		1.*) PROJECT="juju-core" ;;\
+		2.*) PROJECT="juju" ;;\
+	esac;\
+	wget https://launchpad.net/$$PROJECT/$(shell (echo $* | cut -f 1 -d - | cut -f 1,2 -d .))/$*/+download/$@
