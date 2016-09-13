@@ -8,7 +8,7 @@ try:
     from jujuclient.juju2.environment import Environment as Juju2Client
 except ImportError:
     sys.exit("latest jujuclient not installed "
-             "(try python -m pip install jujuclient)")
+             "(try python3 -m pip install jujuclient)")
 
 
 # XXX No support for cert files in Environment._http_conn, so
