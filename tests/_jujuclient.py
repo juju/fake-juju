@@ -60,7 +60,7 @@ class Juju2Client(Juju2Client):
     """
 
     def run_on_all_machines(self, command, timeout=None):
-        """Run the given shell command on all machines in the environment."""
+        """Run the given shell command on all machines in the model."""
         return self._rpc({
             "type": self.actions.name,
             "version": self.actions.version,
