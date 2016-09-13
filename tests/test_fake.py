@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import warnings
 
 from . import _jujuclient
 
@@ -65,7 +66,9 @@ class Juju1FakeTest(_JujuFakeTest, unittest.TestCase):
         self.assertEqual("dummy", info["ProviderType"])
 
     def test_local_charm(self):
-        charm = self.api.add_local_charm_dir(DUMMY_CHARM, "trusty")
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", ResourceWarning)
+            charm = self.api.add_local_charm_dir(DUMMY_CHARM, "trusty")
         self.api.deploy("dummy", charm['CharmURL'], num_units=0)
 
     def test_run_on_all_machines(self):
@@ -109,7 +112,9 @@ class Juju2FakeTest(_JujuFakeTest, unittest.TestCase):
         self.assertEqual("dummy", info["provider-type"])
 
     def test_local_charm(self):
-        charm = self.api.add_local_charm_dir(DUMMY_CHARM, "trusty")
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", ResourceWarning)
+            charm = self.api.add_local_charm_dir(DUMMY_CHARM, "trusty")
         self.api.deploy("dummy", charm['charm-url'], num_units=0)
 
     def test_run_on_all_machines(self):
