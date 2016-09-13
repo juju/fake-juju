@@ -64,7 +64,6 @@ test: $(BUILT_VERSIONS)
 	@echo -n $(VERSIONS) | xargs -t -d' ' -I {} env JUJU_VERSION={} python3 -m unittest tests.test_fake
 
 juju-core_%.tar.gz:
-	#wget https://launchpad.net/juju-core/$(shell ((echo $* | grep -q beta) && echo trunk) || (echo $* | cut -f 1,2 -d .))/$*/+download/$@
 	case $* in \
 		1.*) \
 			wget https://launchpad.net/juju-core/$(shell ((echo $* | grep -q beta) && echo trunk) || (echo $* | cut -f 1,2 -d .))/$*/+download/$@;; \
