@@ -53,7 +53,11 @@ def connect(endpoint, password, uuid, version=None):
 
 
 class Juju2Client(Juju2Client):
-    """Fixes busted code."""
+    """A wrapper around the actual client that fixes busted code.
+    
+    This can go away once the following bug(s) are fixed:
+    * https://bugs.launchpad.net/python-jujuclient/+bug/1619479
+    """
 
     def run_on_all_machines(self, command, timeout=None):
         """Run the given shell command on all machines in the environment."""
