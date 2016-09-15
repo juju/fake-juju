@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+
+PACKAGE=jujuclient
+ARCHIVES_DIR=$PACKAGE
+REQ_FILE=$ARCHIVES_DIR/requirements
+VENV_DIR=/tmp/$PACKAGE
+
+set -x
+sudo apt-get install python3-venv
+{ set +x; } 2>/dev/null
+
+echo
+echo Building the requirements file.
+echo '###############################'
+set -x
+rm -r $VENV_DIR &>/dev/null
+python3 -m venv $VENV_DIR
+exclude=$($VENV_DIR/bin/python3 -m pip list | awk '{print $1}' | tr '\n' '|' | sed 's/|$//')
+$VENV_DIR/bin/python3 -m pip install --no-cache-dir $PACKAGE
+$VENV_DIR/bin/python3 -m pip freeze | grep -E -v $exclude > $REQ_FILE
+rm -r $VENV_DIR &>/dev/null
+{ set +x; } 2>/dev/null
+
+echo
+echo Downloading the archives.
+echo '#########################'
+set -x
+python3 -m pip download --dest $ARCHIVES_DIR --requirement $REQ_FILE
+{ set +x; } 2>/dev/null
+
+
+#############################################
+# Uncomment the following to test installing.
+#############################################
+
+INSTALL=True
+
+if [[ -n $INSTALL ]]; then
+    echo
+    echo Install the pinned packages.
+    echo '############################'
+    set -x
+    sudo python3 -m pip install \
+            --ignore-installed \
+            --no-cache-dir \
+            --no-index \
+            --find-links $ARCHIVES_DIR \
+            --requirement $REQ_FILE
+    { set +x; } 2>/dev/null
+fi
