@@ -6,6 +6,8 @@ TARBALLS = $(foreach version,$(VERSIONS),juju-core_$(version).tar.gz)
 BUILT_VERSIONS = $(foreach version,$(VERSIONS),$(version)/$(version))
 JUJU_TARBALL = juju-core_$(JUJU_VERSION).tar.gz
 JUJU_PATCH = patches/juju-core_$(JUJU_VERSION).patch
+JUJUCLIENT_DOWNLOADS = $(shell pwd)/jujuclient
+JUJUCLIENT_REQ = $(JUJUCLIENT_DOWNLOADS)/requirements
 
 .PHONY: build
 build: $(BUILT_VERSIONS)
@@ -25,7 +27,13 @@ ci-test:
 		python3-pip \
 		golang-go \
 		golang-1.6
-	python3 -m pip install jujuclient
+	# See jujuclient/UPGRADE when a newer jujuclient version is needed.
+	sudo python3 -m pip install \
+		--ignore-installed \
+        --no-cache-dir \
+		--no-index \
+		--find-links $(JUJUCLIENT_DOWNLOADS) \
+		--requirement $(JUJUCLIENT_REQ)
 	make test
 
 .PHONY: build-common
