@@ -38,7 +38,7 @@ ci-test:
 
 .PHONY: build-common
 build-common: $(JUJU_TARBALL) $(JUJU_PATCH)
-	rm -r $(JUJU_VERSION)/src  # Go doesn't play nice with existing files.
+	rm -rf $(JUJU_VERSION)/src  # Go doesn't play nice with existing files.
 	tar -C $(JUJU_VERSION) --strip=1 -z -xf $(JUJU_TARBALL)
 	patch -p0 < $(JUJU_PATCH)
 	cd $(JUJU_VERSION) && GOPATH=$(shell pwd)/$(JUJU_VERSION) PATH=$(PATH) go build
