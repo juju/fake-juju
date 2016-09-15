@@ -1,14 +1,23 @@
+
+import datetime
+import json
 import os
-import tempfile
+import os.path
 import shutil
 import subprocess
-import json
-import ssl
+import tempfile
+import unittest
+import warnings
 
-from jujuclient import Environment
+from . import _jujuclient
 
-from unittest import TestCase
-from unittest.case import SkipTest
+
+# Quiet pyflakes on Python 2.
+try:
+    ResourceWarning
+except NameError:
+    ResourceWarning = Warning
+
 
 ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
 
@@ -17,58 +26,62 @@ JUJU_FAKE = os.path.join(ROOT_DIR, JUJU_VERSION, JUJU_VERSION)
 
 DUMMY_CHARM = os.path.join(ROOT_DIR, "tests", "charms", "dummy")
 
-ENVIRONMENTS_YAML = """environments:
-    test:
-        admin-secret: test
-        default-series: trusty
-        type: dummy
-"""
 
-# XXX No support for cert files in Environment._http_conn, so
-# add it via monkey patching.
-if hasattr(ssl, "_create_unverified_context"):
-    ssl._create_default_https_context = ssl._create_unverified_context
+class _JujuFakeTest:
 
-
-class JujuFakeTest(TestCase):
+    # These are set on the child classes.
+    destroycmd = None
+    bootstrap = None
 
     def setUp(self):
-        super(JujuFakeTest, self).setUp()
-        if JUJU_VERSION.startswith("2.0"):
-            raise SkipTest("Juju 2.0 still not fully supported")
-        self.juju_home = tempfile.mkdtemp()
-        environments_yaml = os.path.join(self.juju_home, "environments.yaml")
-        with open(environments_yaml, "w") as fd:
-            fd.write(ENVIRONMENTS_YAML)
+        super(_JujuFakeTest, self).setUp()
+
         self.env = os.environ.copy()
-        self.env["JUJU_HOME"] = self.juju_home
-        self.juju_fake = os.path.join(JUJU_VERSION, JUJU_VERSION)
-        subprocess.check_call([JUJU_FAKE, "bootstrap"], env=self.env)
-        output = subprocess.check_output([JUJU_FAKE, "api-info"], env=self.env)
-        api_info = json.loads(output)
-        endpoint = "wss://" + str(api_info["state-servers"][0]) + "/"
-        # TODO make use of the cert
-        # ca_cert = os.path.join(self.juju_home, "cert.ca")
-        self.environment = Environment(endpoint)
-        self.environment.login("test")
+        self.juju_home = cfgdir = tempfile.mkdtemp()
+        _jujuclient.prepare("dummy", "dummy", cfgdir, self.env, JUJU_VERSION)
+
+        endpoint, uuid, password = self.bootstrap("dummy", "dummy", self.env)
+        self.api = _jujuclient.connect(endpoint, password, uuid, JUJU_VERSION)
 
     def tearDown(self):
-        subprocess.check_call([JUJU_FAKE, "destroy-environment"], env=self.env)
+        subprocess.check_call([JUJU_FAKE, self.destroycmd], env=self.env)
+        self.api.close()
+
         shutil.rmtree(self.juju_home)
-        super(JujuFakeTest, self).tearDown()
+
+        super(_JujuFakeTest, self).tearDown()
+
+
+@unittest.skipUnless(JUJU_VERSION.startswith("1."), "wrong Juju version")
+class Juju1FakeTest(_JujuFakeTest, unittest.TestCase):
+
+    destroycmd = "destroy-environment"
+
+    def bootstrap(self, name, type, env):
+        """Return the API endpoint after bootstrapping the controller."""
+        subprocess.check_call([JUJU_FAKE, "bootstrap", "-e", name], env=env)
+
+        output = subprocess.check_output([JUJU_FAKE, "api-info"], env=env)
+        api_info = json.loads(output.decode())
+        endpoint = str(api_info["state-servers"][0])
+        uuid = api_info["environ-uuid"]
+        password = "test"
+        return endpoint, uuid, password
 
     def test_info(self):
-        info = self.environment.info()
+        info = self.api.info()
         self.assertEqual("dummy", info["ProviderType"])
 
     def test_local_charm(self):
-        charm = self.environment.add_local_charm_dir(DUMMY_CHARM, "trusty")
-        self.environment.deploy("dummy", charm["CharmURL"], num_units=0)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", ResourceWarning)
+            charm = self.api.add_local_charm_dir(DUMMY_CHARM, "trusty")
+        self.api.deploy("dummy", charm['CharmURL'], num_units=0)
 
     def test_run_on_all_machines(self):
         timeout = 5 * 10 ** 9
-        result = self.environment.run_on_all_machines(
-            "/foo/bar", timeout=timeout)
+        result = self.api.run_on_all_machines("/foo/bar", timeout=timeout)
+
         self.assertEqual(
             {"Results": [
                 {"Code": 0,
@@ -77,4 +90,65 @@ class JujuFakeTest(TestCase):
                  "MachineId": "0",
                  "Error": "",
                  "UnitId": ""}]},
+            result)
+
+
+@unittest.skipUnless(JUJU_VERSION.startswith("2."), "wrong Juju version")
+class Juju2FakeTest(_JujuFakeTest, unittest.TestCase):
+
+    destroycmd = "destroy-controller"
+
+    def bootstrap(self, name, type, env):
+        """Return the API endpoint after bootstrapping the controller."""
+        args = [JUJU_FAKE, "bootstrap", "--no-gui", name, type]
+        subprocess.check_call(args, env=env)
+
+        args = [JUJU_FAKE, "show-controller", "--format", "json",
+                "--show-password", name]
+        output = subprocess.check_output(args, env=env)
+        api_info = json.loads(output.decode())
+        endpoint = str(api_info[name]["details"]["api-endpoints"][0])
+        model = api_info[name]["current-model"]
+        uuid = api_info[name]["models"][model]["uuid"]
+        password = api_info[name]["account"]["password"]
+        return endpoint, uuid, password
+
+    def test_info(self):
+        info = self.api.info()
+        self.assertEqual("dummy", info["provider-type"])
+
+    def test_local_charm(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", ResourceWarning)
+            charm = self.api.add_local_charm_dir(DUMMY_CHARM, "trusty")
+        self.api.deploy("dummy", charm['charm-url'], num_units=0)
+
+    def test_run_on_all_machines(self):
+        timeout = 5 * 10 ** 9
+        now = datetime.datetime.utcnow()
+        result = self.api.run_on_all_machines("/foo/bar", timeout=timeout)
+
+        tag = result["results"][0]["action"]["tag"]
+        self.assertTrue(tag.startswith("action-"))
+        self.maxDiff = None
+        enqueuedstr = result["results"][0]["enqueued"]
+        enqueued = datetime.datetime.strptime(
+            enqueuedstr, "%Y-%m-%dT%H:%M:%SZ")
+        self.assertLess(enqueued - now, datetime.timedelta(seconds=1))
+        self.assertEqual(
+            {"results": [
+                {"action": {
+                    "name": "juju-run",
+                    "parameters": {
+                        "command": "/foo/bar",
+                        "timeout": 5000000000,
+                        },
+                    "receiver": "machine-0",
+                    "tag": tag,
+                    },
+                 "completed": "0001-01-01T00:00:00Z",
+                 "enqueued": enqueuedstr,
+                 "started": "0001-01-01T00:00:00Z",
+                 "status": "pending",
+                 }]},
             result)

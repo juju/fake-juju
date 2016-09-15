@@ -2,39 +2,39 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
+	"errors"
 	"fmt"
 	gc "gopkg.in/check.v1"
+	"io"
+	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
-	"encoding/json"
-	"errors"
-	"io/ioutil"
-	"log"
-	"strings"
 
 	"github.com/juju/juju/agent"
 	"github.com/juju/juju/api"
-	"github.com/juju/juju/juju/osenv"
-	"github.com/juju/juju/network"
-	"github.com/juju/juju/state"
-	states "github.com/juju/juju/status"
 	"github.com/juju/juju/cmd/juju/controller"
 	"github.com/juju/juju/instance"
+	"github.com/juju/juju/juju/osenv"
 	jujutesting "github.com/juju/juju/juju/testing"
 	"github.com/juju/juju/jujuclient"
+	"github.com/juju/juju/network"
 	_ "github.com/juju/juju/provider/maas"
+	"github.com/juju/juju/state"
+	states "github.com/juju/juju/status"
 	coretesting "github.com/juju/juju/testing"
 	"github.com/juju/juju/testing/factory"
 	"github.com/juju/juju/version"
-	"gopkg.in/juju/names.v2"
 	semversion "github.com/juju/version"
 	corecharm "gopkg.in/juju/charmrepo.v2-unstable"
+	"gopkg.in/juju/names.v2"
 	goyaml "gopkg.in/yaml.v1"
-	"io"
 )
 
 func main() {
@@ -81,7 +81,7 @@ func bootstrap() error {
 	command := exec.Command(os.Args[0])
 	command.Env = os.Environ()
 	command.Env = append(
-		command.Env, "ADMIN_PASSWORD="+"pwd") 
+		command.Env, "ADMIN_PASSWORD="+"pwd")
 	defaultSeries := "trusty"
 	command.Env = append(command.Env, "DEFAULT_SERIES="+defaultSeries)
 	stdout, err := command.StdoutPipe()
@@ -175,7 +175,7 @@ func parseApiInfo(envName string, stdout io.ReadCloser) (*api.Info, error) {
 	store := jujuclient.NewFileClientStore()
 	// hard-coded value in juju testing
 	// This will be replaced in JUJU_DATA copy of the juju client config.
-        currentController := "kontroll"
+	currentController := "kontroll"
 	one, err := store.ControllerByName("kontroll")
 	if err != nil {
 		return nil, err

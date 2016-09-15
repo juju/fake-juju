@@ -1,0 +1,4 @@
+jujuclient==0.53.2
+PyYAML==3.12
+six==1.10.0
+websocket-client==0.37.0
