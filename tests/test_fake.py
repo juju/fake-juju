@@ -12,6 +12,13 @@ import warnings
 from . import _jujuclient
 
 
+# Quiet pyflakes on Python 2.
+try:
+    ResourceWarning
+except NameError:
+    ResourceWarning = Warning
+
+
 ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
 
 JUJU_VERSION = os.environ.get("JUJU_VERSION", "1.22.1")
