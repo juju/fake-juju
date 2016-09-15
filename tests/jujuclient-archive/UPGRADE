@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
 PACKAGE=jujuclient
-ARCHIVES_DIR=$PACKAGE
+#ARCHIVES_DIR=${PACKAGE}-archive
+ARCHIVES_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 REQ_FILE=$ARCHIVES_DIR/requirements
 VENV_DIR=/tmp/$PACKAGE
 
@@ -33,7 +34,7 @@ python3 -m pip download --dest $ARCHIVES_DIR --requirement $REQ_FILE
 # Uncomment the following to test installing.
 #############################################
 
-INSTALL=True
+#INSTALL=True
 
 if [[ -n $INSTALL ]]; then
     echo
