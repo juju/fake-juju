@@ -53,7 +53,7 @@ class Juju1FakeTest(_JujuFakeTest, unittest.TestCase):
     def bootstrap(self, name, type, env):
         """Return the API endpoint after bootstrapping the controller."""
         subprocess.check_call([JUJU_FAKE, "bootstrap", "-e", name], env=env)
-    
+
         output = subprocess.check_output([JUJU_FAKE, "api-info"], env=env)
         api_info = json.loads(output.decode())
         endpoint = str(api_info["state-servers"][0])
@@ -73,7 +73,6 @@ class Juju1FakeTest(_JujuFakeTest, unittest.TestCase):
 
     def test_run_on_all_machines(self):
         timeout = 5 * 10 ** 9
-        now = datetime.datetime.utcnow()
         result = self.api.run_on_all_machines("/foo/bar", timeout=timeout)
 
         self.assertEqual(
@@ -96,7 +95,7 @@ class Juju2FakeTest(_JujuFakeTest, unittest.TestCase):
         """Return the API endpoint after bootstrapping the controller."""
         args = [JUJU_FAKE, "bootstrap", "--no-gui", name, type]
         subprocess.check_call(args, env=env)
-    
+
         args = [JUJU_FAKE, "show-controller", "--format", "json",
                 "--show-password", name]
         output = subprocess.check_output(args, env=env)

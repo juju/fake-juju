@@ -54,7 +54,7 @@ def connect(endpoint, password, uuid, version=None):
 
 class Juju2Client(Juju2Client):
     """A wrapper around the actual client that fixes busted code.
-    
+
     This can go away once the following bug(s) are fixed:
     * https://bugs.launchpad.net/python-jujuclient/+bug/1619479
     """
