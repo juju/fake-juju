@@ -8,6 +8,8 @@ ifdef JUJU_VERSION  #############################
 GO_VERSION = 1.6
 JUJU_TARBALL = juju-core_$(JUJU_VERSION).tar.gz
 JUJU_PATCH = patches/juju-core_$(JUJU_VERSION).patch
+INSTALLDIR = $(DESTDIR)/usr/bin
+INSTALLED = $(INSTALLDIR)/fake-juju-$(JUJU_VERSION)
 
 $(JUJU_VERSION)/$(JUJU_VERSION):
 	case $(JUJU_VERSION) in \
@@ -34,7 +36,12 @@ build-common: $(JUJU_TARBALL) $(JUJU_PATCH)
 
 .PHONY: install
 install: $(JUJU_VERSION)/$(JUJU_VERSION)
-	install -D $(JUJU_VERSION)/$(JUJU_VERSION) $(DESTDIR)/usr/bin/fake-juju-$(JUJU_VERSION)
+	install -D $(JUJU_VERSION)/$(JUJU_VERSION) $(INSTALLED)
+
+.PHONY: install-dev
+install-dev: $(JUJU_VERSION)/$(JUJU_VERSION)
+	mkdir -p $(INSTALLDIR)
+	ln -s --backup=existing --suffix .orig $(shell pwd)/$(JUJU_VERSION)/$(JUJU_VERSION) $(INSTALLED)
 
 .PHONY: clean
 clean:
@@ -69,6 +76,12 @@ build: $(BUILT_VERSIONS)
 install:
 	for VERSION in $(VERSIONS); do \
 	    $(MAKE) install JUJU_VERSION=$$VERSION; \
+	done
+
+.PHONY: install-dev
+install-dev:
+	for VERSION in $(VERSIONS); do \
+	    $(MAKE) install-dev JUJU_VERSION=$$VERSION; \
 	done
 
 .PHONY: clean
