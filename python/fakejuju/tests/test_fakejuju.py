@@ -4,7 +4,9 @@ import unittest
 
 import txjuju.cli
 
-from fakejuju.fakejuju import get_bootstrap_spec, get_filename, set_envvars
+from fakejuju.failures import Failures
+from fakejuju.fakejuju import (
+    get_bootstrap_spec, get_filename, set_envvars, FakeJuju)
 
 
 class HelperTests(unittest.TestCase):
@@ -128,3 +130,54 @@ class HelperTests(unittest.TestCase):
             "FAKE_JUJU_FAILURES": "",
             "FAKE_JUJU_LOGS_DIR": "",
             })
+
+
+class FakeJujuTests(unittest.TestCase):
+
+    def test_full(self):
+        cfgdir = "/my/juju/home"
+        failures = Failures(cfgdir)
+        juju = FakeJuju("/fake-juju", "1.25.6", cfgdir, "/some/logs", failures)
+
+        self.assertEqual(juju.filename, "/fake-juju")
+        self.assertEqual(juju.version, "1.25.6")
+        self.assertEqual(juju.cfgdir, cfgdir)
+        self.assertEqual(juju.logsdir, "/some/logs")
+        self.assertIs(juju.failures, failures)
+
+    def test_minimal(self):
+        juju = FakeJuju("/fake-juju", "1.25.6", "/my/juju/home")
+
+        self.assertEqual(juju.filename, "/fake-juju")
+        self.assertEqual(juju.version, "1.25.6")
+        self.assertEqual(juju.cfgdir, "/my/juju/home")
+        self.assertEqual(juju.logsdir, "/my/juju/home")
+        self.assertEqual(juju.failures.filename, "/my/juju/home/juju-failures")
+
+    def test_conversions(self):
+        juju = FakeJuju("/fake-juju", "1.25.6", "/x", "/y", Failures("/..."))
+
+        self.assertIsInstance(juju.filename, unicode)
+        self.assertIsInstance(juju.version, unicode)
+        self.assertIsInstance(juju.cfgdir, unicode)
+        self.assertIsInstance(juju.logsdir, unicode)
+
+    def test_logfile(self):
+        juju = FakeJuju("/fake-juju", "1.25.6", "/x", "/some/logs")
+
+        self.assertEqual(juju.logfile, "/some/logs/fake-juju.log")
+
+    def test_infofile(self):
+        juju = FakeJuju("/fake-juju", "1.25.6", "/x")
+
+        self.assertEqual(juju.infofile, "/x/fakejuju")
+
+    def test_fifo(self):
+        juju = FakeJuju("/fake-juju", "1.25.6", "/x")
+
+        self.assertEqual(juju.fifo, "/x/fifo")
+
+    def test_cacertfile(self):
+        juju = FakeJuju("/fake-juju", "1.25.6", "/x")
+
+        self.assertEqual(juju.cacertfile, "/x/cert.ca")

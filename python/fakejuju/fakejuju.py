@@ -1,8 +1,11 @@
 # Copyright 2016 Canonical Limited.  All rights reserved.
 
+from collections import namedtuple
 import os.path
 
 import txjuju.cli
+
+from .failures import Failures
 
 
 def get_bootstrap_spec(name, admin_secret=None):
@@ -43,3 +46,50 @@ def set_envvars(envvars, failures_filename=None, logsdir=None):
     """
     envvars["FAKE_JUJU_FAILURES"] = failures_filename or ""
     envvars["FAKE_JUJU_LOGS_DIR"] = logsdir or ""
+
+
+class FakeJuju(
+        namedtuple("FakeJuju", "filename version cfgdir logsdir failures")):
+    """The fundamental details for fake-juju."""
+
+    def __new__(cls, filename, version, cfgdir, logsdir=None, failures=None):
+        filename = unicode(filename)
+        version = unicode(version)
+        cfgdir = unicode(cfgdir)
+        logsdir = unicode(logsdir) if logsdir is not None else cfgdir
+        if failures is None:
+            failures = Failures(cfgdir)
+        return super(FakeJuju, cls).__new__(
+            cls, filename, version, cfgdir, logsdir, failures)
+
+    def __init__(self, *args, **kwargs):
+        if not self.filename:
+            raise ValueError("missing filename")
+        if not self.version:
+            raise ValueError("missing version")
+        if not self.cfgdir:
+            raise ValueError("missing cfgdir")
+        if not self.logsdir:
+            raise ValueError("missing logsdir")
+        if self.failures is None:
+            raise ValueError("missing failures")
+
+    @property
+    def logfile(self):
+        """The path to fake-juju's log file."""
+        return os.path.join(self.logsdir, "fake-juju.log")
+
+    @property
+    def infofile(self):
+        """The path to fake-juju's data cache."""
+        return os.path.join(self.cfgdir, "fakejuju")
+
+    @property
+    def fifo(self):
+        """The path to the fifo file that triggers shutdown."""
+        return os.path.join(self.cfgdir, "fifo")
+
+    @property
+    def cacertfile(self):
+        """The path to the API server's certificate."""
+        return os.path.join(self.cfgdir, "cert.ca")
