@@ -20,6 +20,7 @@ class FailuresTests(unittest.TestCase):
         super(FailuresTests, self).tearDown()
 
     def test_full(self):
+        """Failures() works correctly when given all args."""
         entities = [u"x", u"y", u"z"]
         failures = Failures(u"/some/dir", entities)
 
@@ -27,12 +28,14 @@ class FailuresTests(unittest.TestCase):
         self.assertEqual(failures.entities, set(entities))
 
     def test_minimal(self):
+        """Failures() works correctly when given minimal args."""
         failures = Failures(u"/some/dir")
 
         self.assertEqual(failures.filename, u"/some/dir/juju-failures")
         self.assertEqual(failures.entities, set())
 
     def test_conversion(self):
+        """Failures() converts str to unicode."""
         entities = ["x", "y", "z"]
         failures = Failures("/some/dir", entities)
 
@@ -41,11 +44,13 @@ class FailuresTests(unittest.TestCase):
             self.assertIsInstance(id, unicode)
 
     def test_file_not_created_initially(self):
+        """Failures() doesn't create a missing cfgdir until necessary."""
         failures = Failures(self.dirname)
 
         self.assertFalse(os.path.exists(failures.filename))
 
     def test_cfgdir_created(self):
+        """Failures() creates a missing cfgdir as soon as it's needed."""
         dirname = os.path.join(self.dirname, "subdir")
         self.assertFalse(os.path.exists(dirname))
         failures = Failures(dirname)
@@ -54,6 +59,7 @@ class FailuresTests(unittest.TestCase):
         self.assertTrue(os.path.exists(dirname))
 
     def test_fail_entity_one(self):
+        """Failures,fail_entity() writes an initial entry to disk."""
         failures = Failures(self.dirname)
         failures.fail_entity("unit-abc")
         with open(failures.filename) as file:
@@ -62,6 +68,7 @@ class FailuresTests(unittest.TestCase):
         self.assertEqual(data, "unit-abc\n")
 
     def test_fail_entity_multiple(self):
+        """Failures.fail_entity() correctly writes multiple entries to disk."""
         failures = Failures(self.dirname)
         failures.fail_entity("unit-abc")
         failures.fail_entity("unit-xyz")
@@ -73,6 +80,7 @@ class FailuresTests(unittest.TestCase):
         self.assertTrue(data.endswith("\n"))
 
     def test_clear_exists(self):
+        """Failures.clear() deletes the failures file if it exists."""
         failures = Failures(self.dirname)
         failures.fail_entity("unit-abc")
         self.assertTrue(os.path.exists(failures.filename))
@@ -82,6 +90,7 @@ class FailuresTests(unittest.TestCase):
         self.assertEqual(failures.entities, set())
 
     def test_clear_not_exists(self):
+        """Failures.clear() does nothing if the failures file is missing."""
         failures = Failures(self.dirname)
         self.assertFalse(os.path.exists(failures.filename))
         failures.clear()

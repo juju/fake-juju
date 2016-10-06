@@ -138,6 +138,7 @@ class HelperTests(unittest.TestCase):
 class FakeJujuTests(unittest.TestCase):
 
     def test_from_version_full(self):
+        """FakeJuju.from_version() works correctly when given all args."""
         juju = FakeJuju.from_version(
             "1.25.6", "/a/juju/home", "/logs/dir", "/failures/dir", "/bin/dir")
 
@@ -148,6 +149,7 @@ class FakeJujuTests(unittest.TestCase):
         self.assertEqual(juju.failures.filename, "/failures/dir/juju-failures")
 
     def test_from_version_minimal(self):
+        """FakeJuju.from_version() works correctly when given minimal args."""
         juju = FakeJuju.from_version("1.25.6", "/my/juju/home")
 
         self.assertEqual(juju.filename, "/usr/bin/fake-juju-1.25.6")
@@ -157,6 +159,7 @@ class FakeJujuTests(unittest.TestCase):
         self.assertEqual(juju.failures.filename, "/my/juju/home/juju-failures")
 
     def test_full(self):
+        """FakeJuju() works correctly when given all args."""
         cfgdir = "/my/juju/home"
         failures = Failures(cfgdir)
         juju = FakeJuju("/fake-juju", "1.25.6", cfgdir, "/some/logs", failures)
@@ -168,6 +171,7 @@ class FakeJujuTests(unittest.TestCase):
         self.assertIs(juju.failures, failures)
 
     def test_minimal(self):
+        """FakeJuju() works correctly when given minimal args."""
         juju = FakeJuju("/fake-juju", "1.25.6", "/my/juju/home")
 
         self.assertEqual(juju.filename, "/fake-juju")
@@ -177,6 +181,7 @@ class FakeJujuTests(unittest.TestCase):
         self.assertEqual(juju.failures.filename, "/my/juju/home/juju-failures")
 
     def test_conversions(self):
+        """FakeJuju() converts str to unicode."""
         juju = FakeJuju("/fake-juju", "1.25.6", "/x", "/y", Failures("/..."))
 
         self.assertIsInstance(juju.filename, unicode)
@@ -185,44 +190,52 @@ class FakeJujuTests(unittest.TestCase):
         self.assertIsInstance(juju.logsdir, unicode)
 
     def test_missing_filename(self):
+        """FakeJuju() fails if filename is None or empty."""
         with self.assertRaises(ValueError):
             FakeJuju(None, "1.25.6", "/my/juju/home")
         with self.assertRaises(ValueError):
             FakeJuju("", "1.25.6", "/my/juju/home")
 
     def test_missing_version(self):
+        """FakeJuju() fails if version is None or empty."""
         with self.assertRaises(ValueError):
             FakeJuju("/fake-juju", None, "/my/juju/home")
         with self.assertRaises(ValueError):
             FakeJuju("/fake-juju", "", "/my/juju/home")
 
     def test_missing_cfgdir(self):
+        """FakeJuju() fails if cfgdir is None or empty."""
         with self.assertRaises(ValueError):
             FakeJuju("/fake-juju", "1.25.6", None)
         with self.assertRaises(ValueError):
             FakeJuju("/fake-juju", "1.25.6", "")
 
     def test_logfile(self):
+        """FakeJuju.logfile returns the path to the fake-juju log file."""
         juju = FakeJuju("/fake-juju", "1.25.6", "/x", "/some/logs")
 
         self.assertEqual(juju.logfile, "/some/logs/fake-juju.log")
 
     def test_infofile(self):
+        """FakeJuju.logfile returns the path to the fake-juju info file."""
         juju = FakeJuju("/fake-juju", "1.25.6", "/x")
 
         self.assertEqual(juju.infofile, "/x/fakejuju")
 
     def test_fifo(self):
+        """FakeJuju.logfile returns the path to the fake-juju fifo."""
         juju = FakeJuju("/fake-juju", "1.25.6", "/x")
 
         self.assertEqual(juju.fifo, "/x/fifo")
 
     def test_cacertfile(self):
+        """FakeJuju.cacertfile returns the path to the Juju API cert."""
         juju = FakeJuju("/fake-juju", "1.25.6", "/x")
 
         self.assertEqual(juju.cacertfile, "/x/cert.ca")
 
     def test_cli_full(self):
+        """FakeJuju.cli() works correctly when given all args."""
         juju = FakeJuju("/fake-juju", "1.25.6", "/x")
         cli = juju.cli({"SPAM": "eggs"})
 
@@ -237,6 +250,7 @@ class FakeJujuTests(unittest.TestCase):
             )
 
     def test_cli_minimal(self):
+        """FakeJuju.cli() works correctly when given minimal args."""
         juju = FakeJuju("/fake-juju", "1.25.6", "/x")
         cli = juju.cli()
 
@@ -250,6 +264,7 @@ class FakeJujuTests(unittest.TestCase):
             )
 
     def test_cli_juju1(self):
+        """FakeJuju.cli() works correctly for Juju 1.x."""
         juju = FakeJuju.from_version("1.25.6", "/x")
         cli = juju.cli()
 
@@ -257,6 +272,7 @@ class FakeJujuTests(unittest.TestCase):
         self.assertIsInstance(cli._juju, _juju1.CLIHooks)
 
     def test_cli_juju2(self):
+        """FakeJuju.cli() works correctly for Juju 2.x."""
         juju = FakeJuju.from_version("2.0.0", "/x")
         cli = juju.cli()
 
