@@ -1,7 +1,10 @@
 # Copyright 2016 Canonical Limited.  All rights reserved.
 
+import os
 import unittest
 
+from txjuju import _juju1, _juju2
+from txjuju._utils import Executable
 import txjuju.cli
 
 from fakejuju.failures import Failures
@@ -218,3 +221,44 @@ class FakeJujuTests(unittest.TestCase):
         juju = FakeJuju("/fake-juju", "1.25.6", "/x")
 
         self.assertEqual(juju.cacertfile, "/x/cert.ca")
+
+    def test_cli_full(self):
+        juju = FakeJuju("/fake-juju", "1.25.6", "/x")
+        cli = juju.cli({"SPAM": "eggs"})
+
+        self.assertEqual(
+            cli._exe,
+            Executable("/fake-juju", {
+                "SPAM": "eggs",
+                "FAKE_JUJU_FAILURES": "/x/juju-failures",
+                "FAKE_JUJU_LOGS_DIR": "/x",
+                "JUJU_HOME": "/x",
+                }),
+            )
+
+    def test_cli_minimal(self):
+        juju = FakeJuju("/fake-juju", "1.25.6", "/x")
+        cli = juju.cli()
+
+        self.assertEqual(
+            cli._exe,
+            Executable("/fake-juju", dict(os.environ, **{
+                "FAKE_JUJU_FAILURES": "/x/juju-failures",
+                "FAKE_JUJU_LOGS_DIR": "/x",
+                "JUJU_HOME": "/x",
+                })),
+            )
+
+    def test_cli_juju1(self):
+        juju = FakeJuju.from_version("1.25.6", "/x")
+        cli = juju.cli()
+
+        self.assertEqual(cli._exe.envvars["JUJU_HOME"], "/x")
+        self.assertIsInstance(cli._juju, _juju1.CLIHooks)
+
+    def test_cli_juju2(self):
+        juju = FakeJuju.from_version("2.0.0", "/x")
+        cli = juju.cli()
+
+        self.assertEqual(cli._exe.envvars["JUJU_DATA"], "/x")
+        self.assertIsInstance(cli._juju, _juju2.CLIHooks)

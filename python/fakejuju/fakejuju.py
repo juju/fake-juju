@@ -54,7 +54,7 @@ class FakeJuju(
 
     @classmethod
     def from_version(cls, version, cfgdir,
-             logsdir=None, failuresdir=None, bindir=None):
+                     logsdir=None, failuresdir=None, bindir=None):
         """Return a new instance given the provided information.
 
         @param version: The Juju version to fake.
@@ -123,3 +123,23 @@ class FakeJuju(
     def cacertfile(self):
         """The path to the API server's certificate."""
         return os.path.join(self.cfgdir, "cert.ca")
+
+    def cli(self, envvars=None):
+        """
+
+        Currently only the following juju subcommands are supported:
+
+        * bootstrap
+          Not that this only supports the dummy provider and the local
+          system is only minimally impacted.
+        * api-info
+          Note that passwords are always omited, even if requested.
+        * api-endpoints
+        * destroy-environment
+        """
+        if envvars is None:
+            envvars = os.environ
+        envvars = dict(envvars)
+        set_envvars(envvars, self.failures._filename, self.logsdir)
+        return txjuju.cli.CLI.from_version(
+            self.filename, self.version, self.cfgdir, envvars)
