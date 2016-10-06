@@ -45,4 +45,13 @@ listed here:
 
 """
 
+from .fakejuju import get_bootstrap_spec, get_filename, set_envvars, FakeJuju
+
+
+__all__ = [
+    "__version__",
+    "get_bootstrap_spec", "get_filename", "set_envvars",
+    "FakeJuju",
+    ]
+
 __version__ = "0.9.0b1"
