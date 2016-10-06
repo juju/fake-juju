@@ -47,7 +47,6 @@ DEPS = ['yaml',
         'txjuju',
         'fixtures',
         'testtools',
-        'mocker',
         ]
 
 
