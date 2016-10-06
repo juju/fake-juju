@@ -52,12 +52,42 @@ class FakeJuju(
         namedtuple("FakeJuju", "filename version cfgdir logsdir failures")):
     """The fundamental details for fake-juju."""
 
+    @classmethod
+    def from_version(cls, version, cfgdir,
+             logsdir=None, failuresdir=None, bindir=None):
+        """Return a new instance given the provided information.
+
+        @param version: The Juju version to fake.
+        @param cfgdir: The "juju home" directory to use.
+        @param logsdir: The directory where logs will be written.
+            This defaults to cfgdir.
+        @params failuresdir: The directory where failure injection
+            is managed.
+        @param bindir: The directory containing the fake-juju binary.
+            This defaults to /usr/bin.
+        """
+        if logsdir is None:
+            logsdir = cfgdir
+        if failuresdir is None:
+            failuresdir = cfgdir
+        filename = get_filename(version, bindir=bindir)
+        failures = Failures(failuresdir)
+        return cls(filename, version, cfgdir, logsdir, failures)
+
     def __new__(cls, filename, version, cfgdir, logsdir=None, failures=None):
-        filename = unicode(filename)
-        version = unicode(version)
-        cfgdir = unicode(cfgdir)
+        """
+        @param filename: The path to the fake-juju binary.
+        @param version: The Juju version to fake.
+        @param cfgdir: The "juju home" directory to use.
+        @param logsdir: The directory where logs will be written.
+            This defaults to cfgdir.
+        @param failures: The set of fake-juju failures to use.
+        """
+        filename = unicode(filename) if filename else None
+        version = unicode(version) if version else None
+        cfgdir = unicode(cfgdir) if cfgdir else None
         logsdir = unicode(logsdir) if logsdir is not None else cfgdir
-        if failures is None:
+        if failures is None and cfgdir:
             failures = Failures(cfgdir)
         return super(FakeJuju, cls).__new__(
             cls, filename, version, cfgdir, logsdir, failures)

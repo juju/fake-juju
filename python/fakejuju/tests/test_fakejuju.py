@@ -134,6 +134,25 @@ class HelperTests(unittest.TestCase):
 
 class FakeJujuTests(unittest.TestCase):
 
+    def test_from_version_full(self):
+        juju = FakeJuju.from_version(
+            "1.25.6", "/a/juju/home", "/logs/dir", "/failures/dir", "/bin/dir")
+
+        self.assertEqual(juju.filename, "/bin/dir/fake-juju-1.25.6")
+        self.assertEqual(juju.version, "1.25.6")
+        self.assertEqual(juju.cfgdir, "/a/juju/home")
+        self.assertEqual(juju.logsdir, "/logs/dir")
+        self.assertEqual(juju.failures.filename, "/failures/dir/juju-failures")
+
+    def test_from_version_minimal(self):
+        juju = FakeJuju.from_version("1.25.6", "/my/juju/home")
+
+        self.assertEqual(juju.filename, "/usr/bin/fake-juju-1.25.6")
+        self.assertEqual(juju.version, "1.25.6")
+        self.assertEqual(juju.cfgdir, "/my/juju/home")
+        self.assertEqual(juju.logsdir, "/my/juju/home")
+        self.assertEqual(juju.failures.filename, "/my/juju/home/juju-failures")
+
     def test_full(self):
         cfgdir = "/my/juju/home"
         failures = Failures(cfgdir)
@@ -161,6 +180,24 @@ class FakeJujuTests(unittest.TestCase):
         self.assertIsInstance(juju.version, unicode)
         self.assertIsInstance(juju.cfgdir, unicode)
         self.assertIsInstance(juju.logsdir, unicode)
+
+    def test_missing_filename(self):
+        with self.assertRaises(ValueError):
+            FakeJuju(None, "1.25.6", "/my/juju/home")
+        with self.assertRaises(ValueError):
+            FakeJuju("", "1.25.6", "/my/juju/home")
+
+    def test_missing_version(self):
+        with self.assertRaises(ValueError):
+            FakeJuju("/fake-juju", None, "/my/juju/home")
+        with self.assertRaises(ValueError):
+            FakeJuju("/fake-juju", "", "/my/juju/home")
+
+    def test_missing_cfgdir(self):
+        with self.assertRaises(ValueError):
+            FakeJuju("/fake-juju", "1.25.6", None)
+        with self.assertRaises(ValueError):
+            FakeJuju("/fake-juju", "1.25.6", "")
 
     def test_logfile(self):
         juju = FakeJuju("/fake-juju", "1.25.6", "/x", "/some/logs")
