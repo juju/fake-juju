@@ -4,7 +4,7 @@ import unittest
 
 import txjuju.cli
 
-from fakejuju.fakejuju import get_bootstrap_spec, get_filename
+from fakejuju.fakejuju import get_bootstrap_spec, get_filename, set_envvars
 
 
 class HelperTests(unittest.TestCase):
@@ -41,3 +41,76 @@ class HelperTests(unittest.TestCase):
             get_filename(None)
         with self.assertRaises(ValueError):
             get_filename("")
+
+    def test_set_envvars_full(self):
+        envvars = {}
+        set_envvars(envvars, "/spam/failures", "/eggs/logsdir")
+
+        self.assertEqual(envvars, {
+            "FAKE_JUJU_FAILURES": "/spam/failures",
+            "FAKE_JUJU_LOGS_DIR": "/eggs/logsdir",
+            })
+
+    def test_set_envvars_minimal(self):
+        envvars = {}
+        set_envvars(envvars)
+
+        self.assertEqual(envvars, {
+            "FAKE_JUJU_FAILURES": "",
+            "FAKE_JUJU_LOGS_DIR": "",
+            })
+
+    def test_set_envvars_start_empty(self):
+        envvars = {}
+        set_envvars(envvars, "x", "y")
+
+        self.assertEqual(envvars, {
+            "FAKE_JUJU_FAILURES": "x",
+            "FAKE_JUJU_LOGS_DIR": "y",
+            })
+
+    def test_set_envvars_no_collisions(self):
+        envvars = {"SPAM": "eggs"}
+        set_envvars(envvars, "x", "y")
+
+        self.assertEqual(envvars, {
+            "SPAM": "eggs",
+            "FAKE_JUJU_FAILURES": "x",
+            "FAKE_JUJU_LOGS_DIR": "y",
+            })
+
+    def test_set_envvars_empty_to_nonempty(self):
+        envvars = {
+            "FAKE_JUJU_FAILURES": "",
+            "FAKE_JUJU_LOGS_DIR": "",
+            }
+        set_envvars(envvars, "x", "y")
+
+        self.assertEqual(envvars, {
+            "FAKE_JUJU_FAILURES": "x",
+            "FAKE_JUJU_LOGS_DIR": "y",
+            })
+
+    def test_set_envvars_nonempty_to_nonempty(self):
+        envvars = {
+            "FAKE_JUJU_FAILURES": "spam",
+            "FAKE_JUJU_LOGS_DIR": "ham",
+            }
+        set_envvars(envvars, "x", "y")
+
+        self.assertEqual(envvars, {
+            "FAKE_JUJU_FAILURES": "x",
+            "FAKE_JUJU_LOGS_DIR": "y",
+            })
+
+    def test_set_envvars_nonempty_to_empty(self):
+        envvars = {
+            "FAKE_JUJU_FAILURES": "x",
+            "FAKE_JUJU_LOGS_DIR": "y",
+            }
+        set_envvars(envvars)
+
+        self.assertEqual(envvars, {
+            "FAKE_JUJU_FAILURES": "",
+            "FAKE_JUJU_LOGS_DIR": "",
+            })

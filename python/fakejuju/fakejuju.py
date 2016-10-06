@@ -30,3 +30,16 @@ def get_filename(version, bindir=None):
         # XXX Search $PATH.
         bindir = "/usr/bin"
     return os.path.join(bindir, filename)
+
+
+def set_envvars(envvars, failures_filename=None, logsdir=None):
+    """Return the environment variables with which to run fake-juju.
+
+    @param envvars: The env dict to update.
+    @param failures_filename: The path to the failures file that
+        fake-juju will use.
+    @params logsdir: The path to the directory where fake-juju will
+        write its log files.
+    """
+    envvars["FAKE_JUJU_FAILURES"] = failures_filename or ""
+    envvars["FAKE_JUJU_LOGS_DIR"] = logsdir or ""
