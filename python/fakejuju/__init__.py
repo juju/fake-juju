@@ -45,7 +45,7 @@ listed here:
 
 """
 
-from .fakejuju import get_bootstrap_spec, get_filename, set_envvars, FakeJuju
+from .fakejuju import get_filename, set_envvars, FakeJuju
 
 
 __all__ = [
@@ -55,3 +55,16 @@ __all__ = [
     ]
 
 __version__ = "0.9.0b1"
+
+
+def get_bootstrap_spec(name, admin_secret=None):
+    """Return the BootstrapSpec instance for the given controller.
+
+    @param name: The controller name to set up.
+    @param admin_secret: The admin user password to use.
+    """
+    import txjuju.cli
+
+    driver = "dummy"
+    default_series = None  # Use the default.
+    return txjuju.cli.BootstrapSpec(name, driver, default_series, admin_secret)
