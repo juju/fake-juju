@@ -2,26 +2,10 @@
 
 import unittest
 
-import txjuju.cli
-
-from fakejuju.fakejuju import get_bootstrap_spec, get_filename, set_envvars
+from fakejuju.fakejuju import get_filename, set_envvars
 
 
 class HelperTests(unittest.TestCase):
-
-    def test_get_bootstrap_spec_full(self):
-        """get_bootstrap_spec() works correctly when given all args."""
-        spec = get_bootstrap_spec("my-env", "pw")
-
-        self.assertEqual(
-            spec,
-            txjuju.cli.BootstrapSpec("my-env", "dummy", admin_secret="pw"))
-
-    def test_get_bootstrap_spec_minimal(self):
-        """get_bootstrap_spec() works correctly when given minimal args."""
-        spec = get_bootstrap_spec("my-env")
-
-        self.assertEqual(spec, txjuju.cli.BootstrapSpec("my-env", "dummy"))
 
     def test_get_filename_full(self):
         """get_filename() works correctly when given all args."""
