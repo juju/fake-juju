@@ -168,13 +168,15 @@ class FakeJujuTests(unittest.TestCase):
         self.assertEqual(juju.failures.filename, "/my/juju/home/juju-failures")
 
     def test_conversions(self):
-        """FakeJuju() converts str to unicode."""
-        juju = FakeJuju("/fake-juju", "1.25.6", "/x", "/y", Failures("/..."))
+        """FakeJuju() doesn't convert the type of any value."""
+        juju_str = FakeJuju(
+            "/fake-juju", "1.25.6", "/x", "/y", Failures("/..."))
+        juju_unicode = FakeJuju(
+            u"/fake-juju", u"1.25.6", u"/x", u"/y", Failures(u"/..."))
 
-        self.assertIsInstance(juju.filename, unicode)
-        self.assertIsInstance(juju.version, unicode)
-        self.assertIsInstance(juju.cfgdir, unicode)
-        self.assertIsInstance(juju.logsdir, unicode)
+        for name in ('filename version cfgdir logsdir'.split()):
+            self.assertIsInstance(getattr(juju_str, name), str)
+            self.assertIsInstance(getattr(juju_unicode, name), unicode)
 
     def test_missing_filename(self):
         """FakeJuju() fails if filename is None or empty."""

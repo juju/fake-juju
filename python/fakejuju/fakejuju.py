@@ -72,10 +72,10 @@ class FakeJuju(
             This defaults to cfgdir.
         @param failures: The set of fake-juju failures to use.
         """
-        filename = unicode(filename) if filename else None
-        version = unicode(version) if version else None
-        cfgdir = unicode(cfgdir) if cfgdir else None
-        logsdir = unicode(logsdir) if logsdir is not None else cfgdir
+        filename = filename if filename else None
+        version = version if version else None
+        cfgdir = cfgdir if cfgdir else None
+        logsdir = logsdir if logsdir is not None else cfgdir
         if failures is None and cfgdir:
             failures = Failures(cfgdir)
         return super(FakeJuju, cls).__new__(
