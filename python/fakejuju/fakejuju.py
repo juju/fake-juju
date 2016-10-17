@@ -112,9 +112,9 @@ class FakeJuju(object):
         return os.path.join(self.cfgdir, "cert.ca")
 
     def cli(self, envvars=None):
-        """
+        """Return the txjuju.cli.CLI for this fake-juju.
 
-        Currently only the following juju subcommands are supported:
+        Currently fake-juju supports only the following juju subcommands:
 
         * bootstrap
           Not that this only supports the dummy provider and the local
