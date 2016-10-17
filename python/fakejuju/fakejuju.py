@@ -1,6 +1,5 @@
 # Copyright 2016 Canonical Limited.  All rights reserved.
 
-from collections import namedtuple
 import os.path
 
 import txjuju.cli
@@ -37,8 +36,7 @@ def set_envvars(envvars, failures_filename=None, logsdir=None):
     envvars["FAKE_JUJU_LOGS_DIR"] = logsdir or ""
 
 
-class FakeJuju(
-        namedtuple("FakeJuju", "filename version cfgdir logsdir failures")):
+class FakeJuju(object):
     """The fundamental details for fake-juju."""
 
     @classmethod
@@ -63,7 +61,7 @@ class FakeJuju(
         failures = Failures(failuresdir)
         return cls(filename, version, cfgdir, logsdir, failures)
 
-    def __new__(cls, filename, version, cfgdir, logsdir=None, failures=None):
+    def __init__(self, filename, version, cfgdir, logsdir=None, failures=None):
         """
         @param filename: The path to the fake-juju binary.
         @param version: The Juju version to fake.
@@ -72,26 +70,26 @@ class FakeJuju(
             This defaults to cfgdir.
         @param failures: The set of fake-juju failures to use.
         """
-        filename = filename if filename else None
-        version = version if version else None
-        cfgdir = cfgdir if cfgdir else None
         logsdir = logsdir if logsdir is not None else cfgdir
         if failures is None and cfgdir:
             failures = Failures(cfgdir)
-        return super(FakeJuju, cls).__new__(
-            cls, filename, version, cfgdir, logsdir, failures)
 
-    def __init__(self, *args, **kwargs):
-        if not self.filename:
+        if not filename:
             raise ValueError("missing filename")
-        if not self.version:
+        if not version:
             raise ValueError("missing version")
-        if not self.cfgdir:
+        if not cfgdir:
             raise ValueError("missing cfgdir")
-        if not self.logsdir:
+        if not logsdir:
             raise ValueError("missing logsdir")
-        if self.failures is None:
+        if failures is None:
             raise ValueError("missing failures")
+
+        self.filename = filename
+        self.version = version
+        self.cfgdir = cfgdir
+        self.logsdir = logsdir
+        self.failures = failures
 
     @property
     def logfile(self):
