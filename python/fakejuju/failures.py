@@ -22,9 +22,9 @@ class Failures(object):
         @param entities: The entity names to start with, if any.
         """
         filename = os.path.join(cfgdir, "juju-failures")
-        entities = set(unicode(tag) for tag in entities or ())
+        entities = set(entities or ())
 
-        self._filename = unicode(filename)
+        self._filename = filename
         self._entities = entities
 
     @property

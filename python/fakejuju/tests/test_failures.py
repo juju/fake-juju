@@ -35,12 +35,15 @@ class FailuresTests(unittest.TestCase):
         self.assertEqual(failures.entities, set())
 
     def test_conversion(self):
-        """Failures() converts str to unicode."""
-        entities = ["x", "y", "z"]
-        failures = Failures("/some/dir", entities)
+        """Failures() doesn't convert any values."""
+        failures_str = Failures("/some/dir", ["x", "y", "z"])
+        failures_unicode = Failures(u"/some/dir", [u"x", u"y", u"z"])
 
-        self.assertIsInstance(failures.filename, unicode)
-        for id in failures.entities:
+        self.assertIsInstance(failures_str.filename, str)
+        self.assertIsInstance(failures_unicode.filename, unicode)
+        for id in failures_str.entities:
+            self.assertIsInstance(id, str)
+        for id in failures_unicode.entities:
             self.assertIsInstance(id, unicode)
 
     def test_file_not_created_initially(self):
