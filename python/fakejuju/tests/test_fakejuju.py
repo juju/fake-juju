@@ -1,10 +1,15 @@
 # Copyright 2016 Canonical Limited.  All rights reserved.
 
+from contextlib import contextmanager
 import os
+import shutil
+import tempfile
 import unittest
 
 from txjuju import _juju1, _juju2
 from txjuju._utils import Executable
+import txjuju.cli
+import yaml
 
 from fakejuju.failures import Failures
 from fakejuju.fakejuju import get_filename, set_envvars, FakeJuju
@@ -267,3 +272,56 @@ class FakeJujuTests(unittest.TestCase):
 
         self.assertEqual(cli._exe.envvars["JUJU_DATA"], "/x")
         self.assertIsInstance(cli._juju, _juju2.CLIHooks)
+
+    def test_bootstrap(self):
+        """FakeJuju.bootstrap() bootstraps from scratch using fake-juju."""
+        with tempdir() as cfgdir:
+            fakejuju = FakeJuju.from_version("1.25.6", cfgdir)
+            cli, api_info = fakejuju.bootstrap("spam", "secret")
+            port = api_info[None].address.split(":")[-1]
+            cli.destroy_controller()
+
+            files = os.listdir(cfgdir)
+            with open(os.path.join(cfgdir, "environments.yaml")) as envfile:
+                data = envfile.read()
+
+        self.maxDiff = None
+        self.assertEqual(api_info, {
+            'controller': txjuju.cli.APIInfo(
+                endpoints=['localhost:' + port],
+                user='admin',
+                password='dummy-secret',
+                model_uuid='deadbeef-0bad-400d-8000-4b1d0d06f00d',
+                ),
+            None: txjuju.cli.APIInfo(
+                endpoints=['localhost:' + port],
+                user='admin',
+                password='dummy-secret',
+                model_uuid=None,
+                ),
+            })
+        self.assertEqual(sorted(files), [
+            'cert.ca',
+            'environments',
+            'environments.yaml',
+            'fake-juju.log',
+            'fakejuju',
+            ])
+        self.assertEqual(yaml.load(data), {
+            "environments": {
+                "spam": {
+                    "admin-secret": "secret",
+                    "default-series": "trusty",
+                    "type": "dummy",
+                    },
+                },
+            })
+
+
+@contextmanager
+def tempdir():
+    cfgdir = tempfile.mkdtemp("fakejuju-test-")
+    try:
+        yield cfgdir
+    finally:
+        shutil.rmtree(cfgdir)

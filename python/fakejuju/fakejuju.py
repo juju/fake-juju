@@ -2,6 +2,7 @@
 
 import os.path
 
+import txjuju
 import txjuju.cli
 
 from .failures import Failures
@@ -130,3 +131,13 @@ class FakeJuju(object):
         set_envvars(envvars, self.failures._filename, self.logsdir)
         return txjuju.cli.CLI.from_version(
             self.filename, self.version, self.cfgdir, envvars)
+
+    def bootstrap(self, name, admin_secret=None):
+        """Return the CLI and APIInfo after bootstrapping from scratch."""
+        from . import get_bootstrap_spec
+        spec = get_bootstrap_spec(name, admin_secret)
+        cfgfile = txjuju.prepare_for_bootstrap(spec, self.version, self.cfgdir)
+        cli = self.cli()
+        cli.bootstrap(spec, cfgfile=cfgfile)
+        api_info = cli.api_info(spec.name)
+        return cli, api_info
