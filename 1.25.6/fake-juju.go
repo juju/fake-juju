@@ -52,6 +52,7 @@ func main() {
 
 type processInfo struct {
 	Username     string
+	Password     string
 	WorkDir      string
 	EndpointAddr string
 	Uuid         string
@@ -138,7 +139,7 @@ func apiInfo() error {
 		return err
 	}
 	username := strings.Replace(string(info.Username), "dummy-", "", 1)
-	fmt.Printf("{\"user\": \"%s\", \"environ-uuid\": \"%s\", \"state-servers\": [\"%s\"]}\n", username, info.Uuid, info.EndpointAddr)
+	fmt.Printf("{\"user\": \"%s\", \"password\": \"%s\", \"environ-uuid\": \"%s\", \"state-servers\": [\"%s\"]}\n", username, info.Password, info.Uuid, info.EndpointAddr)
 	return nil
 }
 
@@ -209,6 +210,7 @@ func parseApiInfo(envName string, stdout io.ReadCloser) (*api.Info, error) {
 	}
 	err = writeProcessInfo(envName, &processInfo{
 		Username:     credentials.User,
+		Password:     credentials.Password,
 		WorkDir:      workDir,
 		EndpointAddr: addresses[0],
 		Uuid:         uuid,
