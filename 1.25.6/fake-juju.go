@@ -59,6 +59,40 @@ type processInfo struct {
 	CACert       string
 }
 
+type fakejujuFilenames struct {
+	datadir string
+	logsdir string
+}
+
+func newFakejujuFilenames(datadir, logsdir string) fakejujuFilenames {
+	if datadir == "" {
+		datadir = os.Getenv("JUJU_HOME")
+	}
+	if logsdir == "" {
+		logsDir = os.Getenv("FAKE_JUJU_LOGS_DIR")
+		if logsDir == "" {
+			logsDir = datadir
+		}
+	}
+	return fakejujuFilenames{datadir, logsdir}
+}
+
+func (fj fakejujuFilenames) info() string {
+	return filepath.Join(fj.datadir, "fakejuju")
+}
+
+func (fj fakejujuFilenames) logs() string {
+	return filepath.Join(fj.logsDir, "fake-juju.log")
+}
+
+func (fj fakejujuFilenames) fifo() string {
+	return filepath.Join(fj.datadir, "fifo")
+}
+
+func (fj fakejujuFilenames) cacert() string {
+	return filepath.Join(fj.datadir, "cert.ca")
+}
+
 func handleCommand(command string) error {
 	if command == "bootstrap" {
 		return bootstrap()
