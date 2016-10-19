@@ -86,9 +86,12 @@ type fakejujuFilenames struct {
 	logsdir string
 }
 
-func newFakeJujuFilenames(datadir, logsdir string) fakejujuFilenames {
+func newFakeJujuFilenames(datadir, logsdir, jujucfgdir string) fakejujuFilenames {
 	if datadir == "" {
-		datadir = os.Getenv("JUJU_HOME")
+		if jujucfgdir == "" {
+			jujucfgdir = os.Getenv("JUJU_HOME")
+		}
+		datadir = jujucfgdir
 	}
 	if logsdir == "" {
 		logsdir = os.Getenv("FAKE_JUJU_LOGS_DIR")
@@ -116,7 +119,7 @@ func (fj fakejujuFilenames) cacert() string {
 }
 
 func handleCommand(command string) error {
-	filenames := newFakeJujuFilenames("", "")
+	filenames := newFakeJujuFilenames("", "", "")
 	if command == "bootstrap" {
 		return bootstrap(filenames)
 	}
@@ -211,7 +214,7 @@ func destroyEnvironment(filenames fakejujuFilenames) error {
 	if err != nil {
 		return err
 	}
-	filenames.datadir = info.WorkDir // XXX fix this
+	filenames = newFakeJujuFilenames("", "", info.WorkDir)
 	fd, err := os.OpenFile(filenames.fifo(), os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
@@ -276,7 +279,7 @@ func (br bootstrapResult) logsSymlink(target string) (string, string) {
 		return "", ""
 	}
 
-	filenames := newFakeJujuFilenames(br.cfgdir, "") // XXX fix this
+	filenames := newFakeJujuFilenames("", "", br.cfgdir)
 	source := filenames.logs()
 	return source, target
 }
@@ -403,7 +406,7 @@ type FakeJujuSuite struct {
 
 	instanceCount  int
 	machineStarted map[string]bool
-	fifoPath       string
+	filenames      fakejujuFilenames
 	logFile        *os.File
 }
 
@@ -470,15 +473,11 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	os.Setenv("PATH", binPath+":"+os.Getenv("PATH"))
 
-	s.fifoPath = filepath.Join(jujuHome, "fifo")
-	syscall.Mknod(s.fifoPath, syscall.S_IFIFO|0666, 0)
+	s.filenames = newFakeJujuFilenames("", "", jujuHome)
+	syscall.Mknod(s.filenames.fifo(), syscall.S_IFIFO|0666, 0)
 
 	// Logging
-	logsDir := os.Getenv("FAKE_JUJU_LOGS_DIR")
-	if logsDir == "" {
-		logsDir = jujuHome
-	}
-	logPath := filepath.Join(logsDir, "fake-juju.log")
+	logPath := s.filenames.logs()
 	s.logFile, err = os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	c.Assert(err, gc.IsNil)
 
@@ -498,16 +497,17 @@ func (s *FakeJujuSuite) TearDownTest(c *gc.C) {
 }
 
 func (s *FakeJujuSuite) TestStart(c *gc.C) {
+	fifoPath := s.filenames.fifo()
 	watcher := s.State.Watch()
 	go func() {
-		log.Println("Open commands FIFO", s.fifoPath)
-		fd, err := os.Open(s.fifoPath)
+		log.Println("Open commands FIFO", fifoPath)
+		fd, err := os.Open(fifoPath)
 		if err != nil {
 			log.Println("Failed to open commands FIFO")
 		}
 		c.Assert(err, gc.IsNil)
 		scanner := bufio.NewScanner(fd)
-		log.Println("Listen for commands on FIFO", s.fifoPath)
+		log.Println("Listen for commands on FIFO", fifoPath)
 		scanner.Scan()
 		log.Println("Stopping fake-juju")
 		watcher.Stop()
