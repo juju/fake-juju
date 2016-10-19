@@ -211,8 +211,8 @@ func destroyEnvironment(filenames fakejujuFilenames) error {
 	if err != nil {
 		return err
 	}
-	fifoPath := filepath.Join(info.WorkDir, "fifo")
-	fd, err := os.OpenFile(fifoPath, os.O_APPEND|os.O_WRONLY, 0600)
+	filenames.datadir = info.WorkDir // XXX fix this
+	fd, err := os.OpenFile(filenames.fifo(), os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}
