@@ -63,7 +63,8 @@ class FakeJuju(object):
         failures = Failures(failuresdir)
         return cls(filename, version, datadir, logsdir, failures)
 
-    def __init__(self, filename, version, datadir, logsdir=None, failures=None):
+    def __init__(self, filename, version, datadir,
+                 logsdir=None, failures=None):
         """
         @param filename: The path to the fake-juju binary.
         @param version: The Juju version to fake.

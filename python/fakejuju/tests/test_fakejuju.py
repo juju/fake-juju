@@ -164,7 +164,8 @@ class FakeJujuTests(unittest.TestCase):
         """FakeJuju() works correctly when given all args."""
         datadir = "/my/juju/home"
         failures = Failures(datadir)
-        juju = FakeJuju("/fake-juju", "1.25.6", datadir, "/some/logs", failures)
+        juju = FakeJuju(
+            "/fake-juju", "1.25.6", datadir, "/some/logs", failures)
 
         self.assertEqual(juju.filename, "/fake-juju")
         self.assertEqual(juju.version, "1.25.6")
