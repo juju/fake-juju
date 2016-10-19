@@ -24,15 +24,17 @@ def get_filename(version, bindir=None):
     return os.path.join(bindir, filename)
 
 
-def set_envvars(envvars, failures_filename=None, logsdir=None):
+def set_envvars(envvars, datadir=None, failures_filename=None, logsdir=None):
     """Return the environment variables with which to run fake-juju.
 
     @param envvars: The env dict to update.
+    @param datadir: The fake-juju data directory.
     @param failures_filename: The path to the failures file that
         fake-juju will use.
     @params logsdir: The path to the directory where fake-juju will
         write its log files.
     """
+    envvars["FAKE_JUJU_DATA_DIR"] = datadir or ""
     envvars["FAKE_JUJU_FAILURES"] = failures_filename or ""
     envvars["FAKE_JUJU_LOGS_DIR"] = logsdir or ""
 
@@ -41,46 +43,46 @@ class FakeJuju(object):
     """The fundamental details for fake-juju."""
 
     @classmethod
-    def from_version(cls, version, cfgdir,
+    def from_version(cls, version, datadir,
                      logsdir=None, failuresdir=None, bindir=None):
         """Return a new instance given the provided information.
 
         @param version: The Juju version to fake.
-        @param cfgdir: The "juju home" directory to use.
+        @param datadir: The directory in which to store files specific
+            to fake-juju.
         @param logsdir: The directory where logs will be written.
-            This defaults to cfgdir.
+            This defaults to datadir.
         @params failuresdir: The directory where failure injection
             is managed.
         @param bindir: The directory containing the fake-juju binary.
             This defaults to /usr/bin.
         """
-        if logsdir is None:
-            logsdir = cfgdir
         if failuresdir is None:
-            failuresdir = cfgdir
+            failuresdir = datadir
         filename = get_filename(version, bindir=bindir)
         failures = Failures(failuresdir)
-        return cls(filename, version, cfgdir, logsdir, failures)
+        return cls(filename, version, datadir, logsdir, failures)
 
-    def __init__(self, filename, version, cfgdir, logsdir=None, failures=None):
+    def __init__(self, filename, version, datadir, logsdir=None, failures=None):
         """
         @param filename: The path to the fake-juju binary.
         @param version: The Juju version to fake.
-        @param cfgdir: The "juju home" directory to use.
+        @param datadir: The directory in which to store files specific
+            to fake-juju.
         @param logsdir: The directory where logs will be written.
-            This defaults to cfgdir.
+            This defaults to datadir.
         @param failures: The set of fake-juju failures to use.
         """
-        logsdir = logsdir if logsdir is not None else cfgdir
-        if failures is None and cfgdir:
-            failures = Failures(cfgdir)
+        logsdir = logsdir if logsdir is not None else datadir
+        if failures is None and datadir:
+            failures = Failures(datadir)
 
         if not filename:
             raise ValueError("missing filename")
         if not version:
             raise ValueError("missing version")
-        if not cfgdir:
-            raise ValueError("missing cfgdir")
+        if not datadir:
+            raise ValueError("missing datadir")
         if not logsdir:
             raise ValueError("missing logsdir")
         if failures is None:
@@ -88,7 +90,7 @@ class FakeJuju(object):
 
         self.filename = filename
         self.version = version
-        self.cfgdir = cfgdir
+        self.datadir = datadir
         self.logsdir = logsdir
         self.failures = failures
 
@@ -100,19 +102,19 @@ class FakeJuju(object):
     @property
     def infofile(self):
         """The path to fake-juju's data cache."""
-        return os.path.join(self.cfgdir, "fakejuju")
+        return os.path.join(self.datadir, "fakejuju")
 
     @property
     def fifo(self):
         """The path to the fifo file that triggers shutdown."""
-        return os.path.join(self.cfgdir, "fifo")
+        return os.path.join(self.datadir, "fifo")
 
     @property
     def cacertfile(self):
         """The path to the API server's certificate."""
-        return os.path.join(self.cfgdir, "cert.ca")
+        return os.path.join(self.datadir, "cert.ca")
 
-    def cli(self, envvars=None):
+    def cli(self, cfgdir, envvars=None):
         """Return the txjuju.cli.CLI for this fake-juju.
 
         Currently fake-juju supports only the following juju subcommands:
@@ -128,16 +130,17 @@ class FakeJuju(object):
         if envvars is None:
             envvars = os.environ
         envvars = dict(envvars)
-        set_envvars(envvars, self.failures._filename, self.logsdir)
+        set_envvars(
+            envvars, self.datadir, self.failures._filename, self.logsdir)
         return txjuju.cli.CLI.from_version(
-            self.filename, self.version, self.cfgdir, envvars)
+            self.filename, self.version, cfgdir, envvars)
 
-    def bootstrap(self, name, admin_secret=None):
+    def bootstrap(self, name, cfgdir, admin_secret=None):
         """Return the CLI and APIInfo after bootstrapping from scratch."""
         from . import get_bootstrap_spec
         spec = get_bootstrap_spec(name, admin_secret)
-        cfgfile = txjuju.prepare_for_bootstrap(spec, self.version, self.cfgdir)
-        cli = self.cli()
+        cfgfile = txjuju.prepare_for_bootstrap(spec, self.version, cfgdir)
+        cli = self.cli(cfgdir)
         cli.bootstrap(spec, cfgfile=cfgfile)
         api_info = cli.api_info(spec.name)
         return cli, api_info

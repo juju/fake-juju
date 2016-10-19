@@ -49,9 +49,10 @@ class SetEnvvarsTests(unittest.TestCase):
     def test_all_args(self):
         """set_envvars() works correctly when given all args."""
         envvars = {}
-        set_envvars(envvars, "/spam/failures", "/eggs/logsdir")
+        set_envvars(envvars, "/spam", "/spam/failures", "/eggs/logsdir")
 
         self.assertEqual(envvars, {
+            "FAKE_JUJU_DATA_DIR": "/spam",
             "FAKE_JUJU_FAILURES": "/spam/failures",
             "FAKE_JUJU_LOGS_DIR": "/eggs/logsdir",
             })
@@ -62,6 +63,7 @@ class SetEnvvarsTests(unittest.TestCase):
         set_envvars(envvars)
 
         self.assertEqual(envvars, {
+            "FAKE_JUJU_DATA_DIR": "",
             "FAKE_JUJU_FAILURES": "",
             "FAKE_JUJU_LOGS_DIR": "",
             })
@@ -69,9 +71,10 @@ class SetEnvvarsTests(unittest.TestCase):
     def test_start_empty(self):
         """set_envvars() sets all values on an empty dict."""
         envvars = {}
-        set_envvars(envvars, "x", "y")
+        set_envvars(envvars, "w", "x", "y")
 
         self.assertEqual(envvars, {
+            "FAKE_JUJU_DATA_DIR": "w",
             "FAKE_JUJU_FAILURES": "x",
             "FAKE_JUJU_LOGS_DIR": "y",
             })
@@ -79,10 +82,11 @@ class SetEnvvarsTests(unittest.TestCase):
     def test_no_collisions(self):
         """set_envvars() sets all values when none are set yet."""
         envvars = {"SPAM": "eggs"}
-        set_envvars(envvars, "x", "y")
+        set_envvars(envvars, "w", "x", "y")
 
         self.assertEqual(envvars, {
             "SPAM": "eggs",
+            "FAKE_JUJU_DATA_DIR": "w",
             "FAKE_JUJU_FAILURES": "x",
             "FAKE_JUJU_LOGS_DIR": "y",
             })
@@ -90,12 +94,14 @@ class SetEnvvarsTests(unittest.TestCase):
     def test_empty_to_nonempty(self):
         """set_envvars() updates empty values."""
         envvars = {
+            "FAKE_JUJU_DATA_DIR": "",
             "FAKE_JUJU_FAILURES": "",
             "FAKE_JUJU_LOGS_DIR": "",
             }
-        set_envvars(envvars, "x", "y")
+        set_envvars(envvars, "w", "x", "y")
 
         self.assertEqual(envvars, {
+            "FAKE_JUJU_DATA_DIR": "w",
             "FAKE_JUJU_FAILURES": "x",
             "FAKE_JUJU_LOGS_DIR": "y",
             })
@@ -103,12 +109,14 @@ class SetEnvvarsTests(unittest.TestCase):
     def test_nonempty_to_nonempty(self):
         """set_envvars() overwrites existing values."""
         envvars = {
+            "FAKE_JUJU_DATA_DIR": "spam",
             "FAKE_JUJU_FAILURES": "spam",
             "FAKE_JUJU_LOGS_DIR": "ham",
             }
-        set_envvars(envvars, "x", "y")
+        set_envvars(envvars, "w", "x", "y")
 
         self.assertEqual(envvars, {
+            "FAKE_JUJU_DATA_DIR": "w",
             "FAKE_JUJU_FAILURES": "x",
             "FAKE_JUJU_LOGS_DIR": "y",
             })
@@ -116,12 +124,14 @@ class SetEnvvarsTests(unittest.TestCase):
     def test_nonempty_to_empty(self):
         """set_envvars() with no args "unsets" existing values."""
         envvars = {
+            "FAKE_JUJU_DATA_DIR": "w",
             "FAKE_JUJU_FAILURES": "x",
             "FAKE_JUJU_LOGS_DIR": "y",
             }
         set_envvars(envvars)
 
         self.assertEqual(envvars, {
+            "FAKE_JUJU_DATA_DIR": "",
             "FAKE_JUJU_FAILURES": "",
             "FAKE_JUJU_LOGS_DIR": "",
             })
@@ -136,7 +146,7 @@ class FakeJujuTests(unittest.TestCase):
 
         self.assertEqual(juju.filename, "/bin/dir/fake-juju-1.25.6")
         self.assertEqual(juju.version, "1.25.6")
-        self.assertEqual(juju.cfgdir, "/a/juju/home")
+        self.assertEqual(juju.datadir, "/a/juju/home")
         self.assertEqual(juju.logsdir, "/logs/dir")
         self.assertEqual(juju.failures.filename, "/failures/dir/juju-failures")
 
@@ -146,19 +156,19 @@ class FakeJujuTests(unittest.TestCase):
 
         self.assertEqual(juju.filename, "/usr/bin/fake-juju-1.25.6")
         self.assertEqual(juju.version, "1.25.6")
-        self.assertEqual(juju.cfgdir, "/my/juju/home")
+        self.assertEqual(juju.datadir, "/my/juju/home")
         self.assertEqual(juju.logsdir, "/my/juju/home")
         self.assertEqual(juju.failures.filename, "/my/juju/home/juju-failures")
 
     def test_full(self):
         """FakeJuju() works correctly when given all args."""
-        cfgdir = "/my/juju/home"
-        failures = Failures(cfgdir)
-        juju = FakeJuju("/fake-juju", "1.25.6", cfgdir, "/some/logs", failures)
+        datadir = "/my/juju/home"
+        failures = Failures(datadir)
+        juju = FakeJuju("/fake-juju", "1.25.6", datadir, "/some/logs", failures)
 
         self.assertEqual(juju.filename, "/fake-juju")
         self.assertEqual(juju.version, "1.25.6")
-        self.assertEqual(juju.cfgdir, cfgdir)
+        self.assertEqual(juju.datadir, datadir)
         self.assertEqual(juju.logsdir, "/some/logs")
         self.assertIs(juju.failures, failures)
 
@@ -168,7 +178,7 @@ class FakeJujuTests(unittest.TestCase):
 
         self.assertEqual(juju.filename, "/fake-juju")
         self.assertEqual(juju.version, "1.25.6")
-        self.assertEqual(juju.cfgdir, "/my/juju/home")
+        self.assertEqual(juju.datadir, "/my/juju/home")
         self.assertEqual(juju.logsdir, "/my/juju/home")
         self.assertEqual(juju.failures.filename, "/my/juju/home/juju-failures")
 
@@ -179,7 +189,7 @@ class FakeJujuTests(unittest.TestCase):
         juju_unicode = FakeJuju(
             u"/fake-juju", u"1.25.6", u"/x", u"/y", Failures(u"/..."))
 
-        for name in ('filename version cfgdir logsdir'.split()):
+        for name in ('filename version datadir logsdir'.split()):
             self.assertIsInstance(getattr(juju_str, name), str)
             self.assertIsInstance(getattr(juju_unicode, name), unicode)
 
@@ -197,8 +207,8 @@ class FakeJujuTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             FakeJuju("/fake-juju", "", "/my/juju/home")
 
-    def test_missing_cfgdir(self):
-        """FakeJuju() fails if cfgdir is None or empty."""
+    def test_missing_datadir(self):
+        """FakeJuju() fails if datadir is None or empty."""
         with self.assertRaises(ValueError):
             FakeJuju("/fake-juju", "1.25.6", None)
         with self.assertRaises(ValueError):
@@ -231,57 +241,63 @@ class FakeJujuTests(unittest.TestCase):
     def test_cli_full(self):
         """FakeJuju.cli() works correctly when given all args."""
         juju = FakeJuju("/fake-juju", "1.25.6", "/x")
-        cli = juju.cli({"SPAM": "eggs"})
+        cli = juju.cli("/y", {"SPAM": "eggs"})
 
         self.assertEqual(
             cli._exe,
             Executable("/fake-juju", {
                 "SPAM": "eggs",
+                "FAKE_JUJU_DATA_DIR": "/x",
                 "FAKE_JUJU_FAILURES": "/x/juju-failures",
                 "FAKE_JUJU_LOGS_DIR": "/x",
-                "JUJU_HOME": "/x",
+                "JUJU_HOME": "/y",
                 }),
             )
 
     def test_cli_minimal(self):
         """FakeJuju.cli() works correctly when given minimal args."""
         juju = FakeJuju("/fake-juju", "1.25.6", "/x")
-        cli = juju.cli()
+        cli = juju.cli("/y")
 
         self.assertEqual(
             cli._exe,
             Executable("/fake-juju", dict(os.environ, **{
+                "FAKE_JUJU_DATA_DIR": "/x",
                 "FAKE_JUJU_FAILURES": "/x/juju-failures",
                 "FAKE_JUJU_LOGS_DIR": "/x",
-                "JUJU_HOME": "/x",
+                "JUJU_HOME": "/y",
                 })),
             )
 
     def test_cli_juju1(self):
         """FakeJuju.cli() works correctly for Juju 1.x."""
         juju = FakeJuju.from_version("1.25.6", "/x")
-        cli = juju.cli()
+        cli = juju.cli("/y")
 
-        self.assertEqual(cli._exe.envvars["JUJU_HOME"], "/x")
+        self.assertEqual(cli._exe.envvars["JUJU_HOME"], "/y")
         self.assertIsInstance(cli._juju, _juju1.CLIHooks)
 
     def test_cli_juju2(self):
         """FakeJuju.cli() works correctly for Juju 2.x."""
         juju = FakeJuju.from_version("2.0.0", "/x")
-        cli = juju.cli()
+        cli = juju.cli("/y")
 
-        self.assertEqual(cli._exe.envvars["JUJU_DATA"], "/x")
+        self.assertEqual(cli._exe.envvars["JUJU_DATA"], "/y")
         self.assertIsInstance(cli._juju, _juju2.CLIHooks)
 
     def test_bootstrap(self):
         """FakeJuju.bootstrap() bootstraps from scratch using fake-juju."""
-        with tempdir() as cfgdir:
-            fakejuju = FakeJuju.from_version("1.25.6", cfgdir)
-            cli, api_info = fakejuju.bootstrap("spam", "secret")
+        with tempdir() as datadir:
+            fakejuju = FakeJuju.from_version("1.25.6", datadir)
+            cfgdir = os.path.join(datadir, "juju")
+            cli, api_info = fakejuju.bootstrap("spam", cfgdir, "secret")
             port = api_info[None].address.split(":")[-1]
             cli.destroy_controller()
 
-            files = os.listdir(cfgdir)
+            files = os.listdir(datadir)
+            files.extend(os.path.join("juju", name)
+                         for name in os.listdir(cfgdir))
+            files.sort()
             with open(os.path.join(cfgdir, "environments.yaml")) as envfile:
                 data = envfile.read()
 
@@ -302,10 +318,12 @@ class FakeJujuTests(unittest.TestCase):
             })
         self.assertEqual(sorted(files), [
             'cert.ca',
-            'environments',
-            'environments.yaml',
             'fake-juju.log',
             'fakejuju',
+            'fifo',
+            'juju',
+            'juju/environments',
+            'juju/environments.yaml',
             ])
         self.assertEqual(yaml.load(data), {
             "environments": {

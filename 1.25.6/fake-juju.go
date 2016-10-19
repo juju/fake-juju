@@ -88,10 +88,13 @@ type fakejujuFilenames struct {
 
 func newFakeJujuFilenames(datadir, logsdir, jujucfgdir string) fakejujuFilenames {
 	if datadir == "" {
-		if jujucfgdir == "" {
-			jujucfgdir = os.Getenv("JUJU_HOME")
+		datadir = os.Getenv("FAKE_JUJU_DATA_DIR")
+		if datadir == "" {
+			if jujucfgdir == "" {
+				jujucfgdir = os.Getenv("JUJU_HOME")
+			}
+			datadir = jujucfgdir
 		}
-		datadir = jujucfgdir
 	}
 	if logsdir == "" {
 		logsdir = os.Getenv("FAKE_JUJU_LOGS_DIR")
@@ -100,6 +103,16 @@ func newFakeJujuFilenames(datadir, logsdir, jujucfgdir string) fakejujuFilenames
 		}
 	}
 	return fakejujuFilenames{datadir, logsdir}
+}
+
+func (fj fakejujuFilenames) ensureDirsExist() error {
+	if err := os.MkdirAll(fj.datadir, 0755); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(fj.logsdir, 0755); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (fj fakejujuFilenames) info() string {
@@ -136,6 +149,9 @@ func handleCommand(command string) error {
 }
 
 func bootstrap(filenames fakejujuFilenames) error {
+	if err := filenames.ensureDirsExist(); err != nil {
+		return err
+	}
 	envName, config, err := environmentNameAndConfig()
 	if err != nil {
 		return err
