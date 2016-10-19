@@ -56,7 +56,29 @@ type processInfo struct {
 	WorkDir      string
 	EndpointAddr string
 	Uuid         string
-	CACert       string
+	CACert       []byte
+}
+
+func readProcessInfo(filenames fakejujuFilenames) (*processInfo, error) {
+	infoPath := filenames.info()
+	data, err := ioutil.ReadFile(infoPath)
+	if err != nil {
+		return nil, err
+	}
+	info := &processInfo{}
+	err = goyaml.Unmarshal(data, info)
+	if err != nil {
+		return nil, err
+	}
+	return info, nil
+}
+
+func (info processInfo) write(infoPath string) error {
+	data, _ := goyaml.Marshal(&info)
+	if err := ioutil.WriteFile(infoPath, data, 0644); err != nil {
+		return err
+	}
+	return nil
 }
 
 type fakejujuFilenames struct {
@@ -64,14 +86,14 @@ type fakejujuFilenames struct {
 	logsdir string
 }
 
-func newFakejujuFilenames(datadir, logsdir string) fakejujuFilenames {
+func newFakeJujuFilenames(datadir, logsdir string) fakejujuFilenames {
 	if datadir == "" {
 		datadir = os.Getenv("JUJU_HOME")
 	}
 	if logsdir == "" {
-		logsDir = os.Getenv("FAKE_JUJU_LOGS_DIR")
-		if logsDir == "" {
-			logsDir = datadir
+		logsdir = os.Getenv("FAKE_JUJU_LOGS_DIR")
+		if logsdir == "" {
+			logsdir = datadir
 		}
 	}
 	return fakejujuFilenames{datadir, logsdir}
@@ -82,7 +104,7 @@ func (fj fakejujuFilenames) info() string {
 }
 
 func (fj fakejujuFilenames) logs() string {
-	return filepath.Join(fj.logsDir, "fake-juju.log")
+	return filepath.Join(fj.logsdir, "fake-juju.log")
 }
 
 func (fj fakejujuFilenames) fifo() string {
@@ -94,7 +116,7 @@ func (fj fakejujuFilenames) cacert() string {
 }
 
 func handleCommand(command string) error {
-	filenames := newFakejujuFilenames("", "")
+	filenames := newFakeJujuFilenames("", "")
 	if command == "bootstrap" {
 		return bootstrap(filenames)
 	}
@@ -126,10 +148,16 @@ func bootstrap(filenames fakejujuFilenames) error {
 		return err
 	}
 	command.Start()
-	apiInfo, err := parseApiInfo(envName, stdout)
+
+	result, err := parseApiInfo(stdout)
 	if err != nil {
 		return err
 	}
+	if err := result.apply(filenames, envName); err != nil {
+		return err
+	}
+	apiInfo := result.apiInfo()
+
 	dialOpts := api.DialOpts{
 		DialAddressInterval: 50 * time.Millisecond,
 		Timeout:             5 * time.Second,
@@ -212,94 +240,125 @@ func environmentNameAndConfig() (string, *config.Config, error) {
 	return envName, config, nil
 }
 
-func parseApiInfo(envName string, stdout io.ReadCloser) (*api.Info, error) {
+type bootstrapResult struct {
+	dummyEnvName string
+	cfgdir       string
+	uuid         string
+	username     string
+	password     string
+	addresses    []string
+	caCert       []byte
+}
+
+func (br bootstrapResult) apiInfo() *api.Info {
+	return &api.Info{
+		Addrs:      br.addresses,
+		Tag:        names.NewLocalUserTag(br.username),
+		Password:   br.password,
+		CACert:     string(br.caCert),
+		EnvironTag: names.NewEnvironTag(br.uuid),
+	}
+}
+
+func (br bootstrapResult) fakeJujuInfo() *processInfo {
+	return &processInfo{
+		Username:     br.username,
+		Password:     br.password,
+		WorkDir:      br.cfgdir,
+		EndpointAddr: br.addresses[0],
+		Uuid:         br.uuid,
+		CACert:       br.caCert,
+	}
+}
+
+func (br bootstrapResult) logsSymlink(target string) (string, string) {
+	if os.Getenv("FAKE_JUJU_LOGS_DIR") != "" {
+		return "", ""
+	}
+
+	filenames := newFakeJujuFilenames(br.cfgdir, "") // XXX fix this
+	source := filenames.logs()
+	return source, target
+}
+
+func (br bootstrapResult) jenvSymlink(jujuHome, envName string) (string, string) {
+	if jujuHome == "" || envName == "" {
+		return "", ""
+	}
+
+	source := filepath.Join(br.cfgdir, "environments", dummyEnvName+".jenv")
+	target := filepath.Join(jujuHome, "environments", envName+".jenv")
+	return source, target
+}
+
+func (br bootstrapResult) apply(filenames fakejujuFilenames, envName string) error {
+	if err := br.fakeJujuInfo().write(filenames.info()); err != nil {
+		return err
+	}
+
+	logsSource, logsTarget := br.logsSymlink(filenames.logs())
+	if logsSource != "" && logsTarget != "" {
+		if err := os.Symlink(logsSource, logsTarget); err != nil {
+			return err
+		}
+	}
+
+	jenvSource, jenvTarget := br.jenvSymlink(os.Getenv("JUJU_HOME"), envName)
+	if jenvSource != "" && jenvTarget != "" {
+		if err := os.MkdirAll(filepath.Dir(jenvTarget), 0755); err != nil {
+			return err
+		}
+		if err := os.Symlink(jenvSource, jenvTarget); err != nil {
+			return err
+		}
+	}
+
+	if err := ioutil.WriteFile(filenames.cacert(), br.caCert, 0644); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// See github.com/juju/juju/blob/juju/testing/conn.go.
+const dummyEnvName = "dummyenv"
+
+func parseApiInfo(stdout io.ReadCloser) (*bootstrapResult, error) {
 	buffer := bufio.NewReader(stdout)
+
 	line, _, err := buffer.ReadLine()
 	if err != nil {
 		return nil, err
 	}
 	uuid := string(line)
-	environTag := names.NewEnvironTag(uuid)
+
 	line, _, err = buffer.ReadLine()
 	if err != nil {
 		return nil, err
 	}
 	workDir := string(line)
+
 	store, err := configstore.NewDisk(workDir)
 	if err != nil {
 		return nil, err
 	}
-	info, err := store.ReadInfo("dummyenv")
+	info, err := store.ReadInfo(dummyEnvName)
 	if err != nil {
 		return nil, err
 	}
+
 	credentials := info.APICredentials()
 	endpoint := info.APIEndpoint()
-	addresses := endpoint.Addresses
-	apiInfo := &api.Info{
-		Addrs:      addresses,
-		Tag:        names.NewLocalUserTag(credentials.User),
-		Password:   credentials.Password,
-		CACert:     endpoint.CACert,
-		EnvironTag: environTag,
+	result := &bootstrapResult{
+		dummyEnvName: dummyEnvName,
+		cfgdir:       workDir,
+		uuid:         uuid,
+		username:     credentials.User,
+		password:     credentials.Password,
+		addresses:    endpoint.Addresses,
+		caCert:       []byte(endpoint.CACert),
 	}
-	err = writeProcessInfo(envName, &processInfo{
-		Username:     credentials.User,
-		Password:     credentials.Password,
-		WorkDir:      workDir,
-		EndpointAddr: addresses[0],
-		Uuid:         uuid,
-		CACert:       endpoint.CACert,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return apiInfo, nil
-}
-
-func readProcessInfo(filenames fakejujuFilenames) (*processInfo, error) {
-	infoPath := filenames.info()
-	data, err := ioutil.ReadFile(infoPath)
-	if err != nil {
-		return nil, err
-	}
-	info := &processInfo{}
-	err = goyaml.Unmarshal(data, info)
-	if err != nil {
-		return nil, err
-	}
-	return info, nil
-}
-
-func writeProcessInfo(envName string, info *processInfo) error {
-	var err error
-	jujuHome := os.Getenv("JUJU_HOME")
-	infoPath := filepath.Join(jujuHome, "fakejuju")
-	logsDir := os.Getenv("FAKE_JUJU_LOGS_DIR")
-	if logsDir == "" {
-		logsDir = jujuHome
-	}
-	logPath := filepath.Join(logsDir, "fake-juju.log")
-	caCertPath := filepath.Join(jujuHome, "cert.ca")
-	envPath := filepath.Join(jujuHome, "environments")
-	os.Mkdir(envPath, 0755)
-	jEnvPath := filepath.Join(envPath, envName+".jenv")
-	data, _ := goyaml.Marshal(info)
-	if os.Getenv("FAKE_JUJU_LOGS_DIR") == "" {
-		err = os.Symlink(filepath.Join(info.WorkDir, "fake-juju.log"), logPath)
-		if err != nil {
-			return err
-		}
-	}
-	err = os.Symlink(filepath.Join(info.WorkDir, "environments/dummyenv.jenv"), jEnvPath)
-	if err != nil {
-		return err
-	}
-	err = ioutil.WriteFile(infoPath, data, 0644)
-	if err != nil {
-		return err
-	}
-	return ioutil.WriteFile(caCertPath, []byte(info.CACert), 0644)
+	return result, nil
 }
 
 // Read the failures info file pointed by the FAKE_JUJU_FAILURES environment
