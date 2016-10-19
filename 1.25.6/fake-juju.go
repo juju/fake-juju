@@ -50,87 +50,6 @@ func main() {
 	coretesting.MgoTestPackage(t)
 }
 
-type processInfo struct {
-	Username     string
-	Password     string
-	WorkDir      string
-	EndpointAddr string
-	Uuid         string
-	CACert       []byte
-}
-
-func readProcessInfo(filenames fakejujuFilenames) (*processInfo, error) {
-	infoPath := filenames.info()
-	data, err := ioutil.ReadFile(infoPath)
-	if err != nil {
-		return nil, err
-	}
-	info := &processInfo{}
-	err = goyaml.Unmarshal(data, info)
-	if err != nil {
-		return nil, err
-	}
-	return info, nil
-}
-
-func (info processInfo) write(infoPath string) error {
-	data, _ := goyaml.Marshal(&info)
-	if err := ioutil.WriteFile(infoPath, data, 0644); err != nil {
-		return err
-	}
-	return nil
-}
-
-type fakejujuFilenames struct {
-	datadir string
-	logsdir string
-}
-
-func newFakeJujuFilenames(datadir, logsdir, jujucfgdir string) fakejujuFilenames {
-	if datadir == "" {
-		datadir = os.Getenv("FAKE_JUJU_DATA_DIR")
-		if datadir == "" {
-			if jujucfgdir == "" {
-				jujucfgdir = os.Getenv("JUJU_HOME")
-			}
-			datadir = jujucfgdir
-		}
-	}
-	if logsdir == "" {
-		logsdir = os.Getenv("FAKE_JUJU_LOGS_DIR")
-		if logsdir == "" {
-			logsdir = datadir
-		}
-	}
-	return fakejujuFilenames{datadir, logsdir}
-}
-
-func (fj fakejujuFilenames) ensureDirsExist() error {
-	if err := os.MkdirAll(fj.datadir, 0755); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(fj.logsdir, 0755); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (fj fakejujuFilenames) info() string {
-	return filepath.Join(fj.datadir, "fakejuju")
-}
-
-func (fj fakejujuFilenames) logs() string {
-	return filepath.Join(fj.logsdir, "fake-juju.log")
-}
-
-func (fj fakejujuFilenames) fifo() string {
-	return filepath.Join(fj.datadir, "fifo")
-}
-
-func (fj fakejujuFilenames) cacert() string {
-	return filepath.Join(fj.datadir, "cert.ca")
-}
-
 func handleCommand(command string) error {
 	filenames := newFakeJujuFilenames("", "", "")
 	if command == "bootstrap" {
@@ -259,6 +178,87 @@ func environmentNameAndConfig() (string, *config.Config, error) {
 	return envName, config, nil
 }
 
+type processInfo struct {
+	Username     string
+	Password     string
+	WorkDir      string
+	EndpointAddr string
+	Uuid         string
+	CACert       []byte
+}
+
+func readProcessInfo(filenames fakejujuFilenames) (*processInfo, error) {
+	infoPath := filenames.info()
+	data, err := ioutil.ReadFile(infoPath)
+	if err != nil {
+		return nil, err
+	}
+	info := &processInfo{}
+	err = goyaml.Unmarshal(data, info)
+	if err != nil {
+		return nil, err
+	}
+	return info, nil
+}
+
+func (info processInfo) write(infoPath string) error {
+	data, _ := goyaml.Marshal(&info)
+	if err := ioutil.WriteFile(infoPath, data, 0644); err != nil {
+		return err
+	}
+	return nil
+}
+
+type fakejujuFilenames struct {
+	datadir string
+	logsdir string
+}
+
+func newFakeJujuFilenames(datadir, logsdir, jujucfgdir string) fakejujuFilenames {
+	if datadir == "" {
+		datadir = os.Getenv("FAKE_JUJU_DATA_DIR")
+		if datadir == "" {
+			if jujucfgdir == "" {
+				jujucfgdir = os.Getenv("JUJU_HOME")
+			}
+			datadir = jujucfgdir
+		}
+	}
+	if logsdir == "" {
+		logsdir = os.Getenv("FAKE_JUJU_LOGS_DIR")
+		if logsdir == "" {
+			logsdir = datadir
+		}
+	}
+	return fakejujuFilenames{datadir, logsdir}
+}
+
+func (fj fakejujuFilenames) ensureDirsExist() error {
+	if err := os.MkdirAll(fj.datadir, 0755); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(fj.logsdir, 0755); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (fj fakejujuFilenames) info() string {
+	return filepath.Join(fj.datadir, "fakejuju")
+}
+
+func (fj fakejujuFilenames) logs() string {
+	return filepath.Join(fj.logsdir, "fake-juju.log")
+}
+
+func (fj fakejujuFilenames) fifo() string {
+	return filepath.Join(fj.datadir, "fifo")
+}
+
+func (fj fakejujuFilenames) cacert() string {
+	return filepath.Join(fj.datadir, "cert.ca")
+}
+
 type bootstrapResult struct {
 	dummyEnvName string
 	cfgdir       string
@@ -291,7 +291,7 @@ func (br bootstrapResult) fakeJujuInfo() *processInfo {
 }
 
 func (br bootstrapResult) logsSymlink(target string) (string, string) {
-	if os.Getenv("FAKE_JUJU_LOGS_DIR") != "" {
+	if os.Getenv("FAKE_JUJU_LOGS_DIR") != "" || os.Getenv("FAKE_JUJU_DATA_DIR") != "" {
 		return "", ""
 	}
 
@@ -305,7 +305,7 @@ func (br bootstrapResult) jenvSymlink(jujuHome, envName string) (string, string)
 		return "", ""
 	}
 
-	source := filepath.Join(br.cfgdir, "environments", dummyEnvName+".jenv")
+	source := filepath.Join(br.cfgdir, "environments", br.dummyEnvName+".jenv")
 	target := filepath.Join(jujuHome, "environments", envName+".jenv")
 	return source, target
 }

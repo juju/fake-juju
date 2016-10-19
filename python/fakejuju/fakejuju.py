@@ -126,6 +126,8 @@ class FakeJuju(object):
           Note that passwords are always omited, even if requested.
         * api-endpoints
         * destroy-environment
+
+        Note that fake-juju ignores local config files.
         """
         if envvars is None:
             envvars = os.environ

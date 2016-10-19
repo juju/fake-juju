@@ -51,33 +51,31 @@ func main() {
 	coretesting.MgoTestPackage(t)
 }
 
-type processInfo struct {
-	WorkDir      string
-	EndpointAddr string
-	Uuid         string
-	CACert       string
-}
-
 func handleCommand(command string) error {
+	filenames := newFakeJujuFilenames("", "", "")
 	if command == "bootstrap" {
-		return bootstrap()
+		return bootstrap(filenames)
 	}
 	if command == "show-controller" {
-		return apiInfo()
+		return apiInfo(filenames)
 	}
 	if command == "destroy-controller" {
-		return destroyEnvironment()
+		return destroyController(filenames)
 	}
 	return errors.New("command not found")
 }
 
-func bootstrap() error {
+func bootstrap(filenames fakejujuFilenames) error {
 	argc := len(os.Args)
 	if argc < 4 {
 		return errors.New(
 			"error: controller name and cloud name are required")
 	}
-	envName := os.Args[argc-2]
+	if err := filenames.ensureDirsExist(); err != nil {
+		return err
+	}
+	// XXX Swap the 2 args for juju-2.0-final.
+	controllerName := os.Args[argc-2]
 	command := exec.Command(os.Args[0])
 	command.Env = os.Environ()
 	command.Env = append(
@@ -89,10 +87,16 @@ func bootstrap() error {
 		return err
 	}
 	command.Start()
-	apiInfo, err := parseApiInfo(envName, stdout)
+
+	result, err := parseApiInfo(stdout)
 	if err != nil {
 		return err
 	}
+	if err := result.apply(filenames, controllerName); err != nil {
+		return err
+	}
+	apiInfo := result.apiInfo()
+
 	dialOpts := api.DialOpts{
 		DialAddressInterval: 50 * time.Millisecond,
 		Timeout:             5 * time.Second,
@@ -122,8 +126,8 @@ func bootstrap() error {
 	return errors.New("invalid delta")
 }
 
-func apiInfo() error {
-	info, err := readProcessInfo()
+func apiInfo(filenames fakejujuFilenames) error {
+	info, err := readProcessInfo(filenames)
 	if err != nil {
 		return err
 	}
@@ -140,13 +144,13 @@ func apiInfo() error {
 	return nil
 }
 
-func destroyEnvironment() error {
-	info, err := readProcessInfo()
+func destroyController(filenames fakejujuFilenames) error {
+	info, err := readProcessInfo(filenames)
 	if err != nil {
 		return err
 	}
-	fifoPath := filepath.Join(info.WorkDir, "fifo")
-	fd, err := os.OpenFile(fifoPath, os.O_APPEND|os.O_WRONLY, 0600)
+	filenames = newFakeJujuFilenames("", "", info.WorkDir)
+	fd, err := os.OpenFile(filenames.fifo(), os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}
@@ -158,55 +162,15 @@ func destroyEnvironment() error {
 	return nil
 }
 
-func parseApiInfo(envName string, stdout io.ReadCloser) (*api.Info, error) {
-	buffer := bufio.NewReader(stdout)
-	line, _, err := buffer.ReadLine()
-	if err != nil {
-		return nil, err
-	}
-	uuid := string(line)
-	line, _, err = buffer.ReadLine()
-	if err != nil {
-		return nil, err
-	}
-	workDir := string(line)
-
-	osenv.SetJujuXDGDataHome(workDir)
-	store := jujuclient.NewFileClientStore()
-	// hard-coded value in juju testing
-	// This will be replaced in JUJU_DATA copy of the juju client config.
-	currentController := "kontroll"
-	one, err := store.ControllerByName("kontroll")
-	if err != nil {
-		return nil, err
-	}
-
-	accountDetails, err := store.AccountDetails(currentController)
-	if err != nil {
-		return nil, err
-	}
-	apiInfo := &api.Info{
-		Addrs:    one.APIEndpoints,
-		Tag:      names.NewUserTag(accountDetails.User),
-		Password: accountDetails.Password,
-		CACert:   one.CACert,
-		ModelTag: names.NewModelTag(uuid),
-	}
-
-	err = writeProcessInfo(envName, &processInfo{
-		WorkDir:      workDir,
-		EndpointAddr: one.APIEndpoints[0],
-		Uuid:         uuid,
-		CACert:       one.CACert,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return apiInfo, nil
+type processInfo struct {
+	WorkDir      string
+	EndpointAddr string
+	Uuid         string
+	CACert       []byte
 }
 
-func readProcessInfo() (*processInfo, error) {
-	infoPath := filepath.Join(os.Getenv("JUJU_DATA"), "fakejuju")
+func readProcessInfo(filenames fakejujuFilenames) (*processInfo, error) {
+	infoPath := filenames.info()
 	data, err := ioutil.ReadFile(infoPath)
 	if err != nil {
 		return nil, err
@@ -219,74 +183,197 @@ func readProcessInfo() (*processInfo, error) {
 	return info, nil
 }
 
-func writeProcessInfo(envName string, info *processInfo) error {
-	var err error
-	jujuHome := os.Getenv("JUJU_DATA")
-	infoPath := filepath.Join(jujuHome, "fakejuju")
-	logsDir := os.Getenv("FAKE_JUJU_LOGS_DIR")
-	if logsDir == "" {
-		logsDir = jujuHome
+func (info processInfo) write(infoPath string) error {
+	data, _ := goyaml.Marshal(&info)
+	if err := ioutil.WriteFile(infoPath, data, 0644); err != nil {
+		return err
 	}
-	logPath := filepath.Join(logsDir, "fake-juju.log")
-	caCertPath := filepath.Join(jujuHome, "cert.ca")
-	data, _ := goyaml.Marshal(info)
-	if os.Getenv("FAKE_JUJU_LOGS_DIR") == "" {
-		err = os.Symlink(filepath.Join(info.WorkDir, "fake-juju.log"), logPath)
+	return nil
+}
+
+type fakejujuFilenames struct {
+	datadir string
+	logsdir string
+}
+
+func newFakeJujuFilenames(datadir, logsdir, jujucfgdir string) fakejujuFilenames {
+	if datadir == "" {
+		datadir = os.Getenv("FAKE_JUJU_DATA_DIR")
+		if datadir == "" {
+			if jujucfgdir == "" {
+				jujucfgdir = os.Getenv("JUJU_DATA")
+			}
+			datadir = jujucfgdir
+		}
+	}
+	if logsdir == "" {
+		logsdir = os.Getenv("FAKE_JUJU_LOGS_DIR")
+		if logsdir == "" {
+			logsdir = datadir
+		}
+	}
+	return fakejujuFilenames{datadir, logsdir}
+}
+
+func (fj fakejujuFilenames) ensureDirsExist() error {
+	if err := os.MkdirAll(fj.datadir, 0755); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(fj.logsdir, 0755); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (fj fakejujuFilenames) info() string {
+	return filepath.Join(fj.datadir, "fakejuju")
+}
+
+func (fj fakejujuFilenames) logs() string {
+	return filepath.Join(fj.logsdir, "fake-juju.log")
+}
+
+func (fj fakejujuFilenames) fifo() string {
+	return filepath.Join(fj.datadir, "fifo")
+}
+
+func (fj fakejujuFilenames) cacert() string {
+	return filepath.Join(fj.datadir, "cert.ca")
+}
+
+type bootstrapResult struct {
+	dummyControllerName string
+	cfgdir              string
+	uuid                string
+	username            string
+	password            string
+	addresses           []string
+	caCert              []byte
+}
+
+func (br bootstrapResult) apiInfo() *api.Info {
+	return &api.Info{
+		Addrs:    br.addresses,
+		Tag:      names.NewUserTag(br.username),
+		Password: br.password,
+		CACert:   string(br.caCert),
+		ModelTag: names.NewModelTag(br.uuid),
+	}
+}
+
+func (br bootstrapResult) fakeJujuInfo() *processInfo {
+	return &processInfo{
+		WorkDir:      br.cfgdir,
+		EndpointAddr: br.addresses[0],
+		Uuid:         br.uuid,
+		CACert:       br.caCert,
+	}
+}
+
+func (br bootstrapResult) logsSymlink(target string) (string, string) {
+	if os.Getenv("FAKE_JUJU_LOGS_DIR") != "" {
+		return "", ""
+	}
+
+	filenames := newFakeJujuFilenames("", "", br.cfgdir)
+	source := filenames.logs()
+	return source, target
+}
+
+func (br bootstrapResult) apply(filenames fakejujuFilenames, controllerName string) error {
+	if err := br.fakeJujuInfo().write(filenames.info()); err != nil {
+		return err
+	}
+
+	logsSource, logsTarget := br.logsSymlink(filenames.logs())
+	if logsSource != "" && logsTarget != "" {
+		if err := os.Symlink(logsSource, logsTarget); err != nil {
+			return err
+		}
+	}
+
+	if err := br.copyConfig(os.Getenv("JUJU_DATA"), controllerName); err != nil {
+		return err
+	}
+
+	if err := ioutil.WriteFile(filenames.cacert(), br.caCert, 0644); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (br bootstrapResult) copyConfig(cfgdir, controllerName string) error {
+	for _, name := range []string{"controllers.yaml", "models.yaml", "accounts.yaml"} {
+		source := filepath.Join(br.cfgdir, name)
+		target := filepath.Join(cfgdir, name)
+
+		input, err := ioutil.ReadFile(source)
+		if err != nil {
+			return err
+		}
+		// Generated configuration by test fixtures has the controller name
+		// hard-coded to "kontroll". A simple replace should fix this for
+		// clients using this config and expecting a specific controller
+		// name.
+		output := strings.Replace(string(input), dummyControllerName, controllerName, -1)
+		err = ioutil.WriteFile(target, []byte(output), 0644)
 		if err != nil {
 			return err
 		}
 	}
 
-	err = copyClientConfig(
-		filepath.Join(info.WorkDir, "controllers.yaml"),
-		filepath.Join(jujuHome, "controllers.yaml"),
-		envName)
-	if err != nil {
-		return err
-	}
-	err = copyClientConfig(
-		filepath.Join(info.WorkDir, "models.yaml"),
-		filepath.Join(jujuHome, "models.yaml"),
-		envName)
-	if err != nil {
-		return err
-	}
-	err = copyClientConfig(
-		filepath.Join(info.WorkDir, "accounts.yaml"),
-		filepath.Join(jujuHome, "accounts.yaml"),
-		envName)
-	if err != nil {
-		return err
-	}
-	err = ioutil.WriteFile(
-		filepath.Join(jujuHome, "current-controller"),
-		[]byte(envName), 0644)
-	if err != nil {
+	current := filepath.Join(cfgdir, "current-controller")
+	if err := ioutil.WriteFile(current, []byte(controllerName), 0644); err != nil {
 		return err
 	}
 
-	err = ioutil.WriteFile(infoPath, data, 0644)
-	if err != nil {
-		return err
-	}
-	return ioutil.WriteFile(caCertPath, []byte(info.CACert), 0644)
+	return nil
 }
 
-func copyClientConfig(src string, dst string, envName string) error {
-	input, err := ioutil.ReadFile(src)
+// See github.com/juju/juju/blob/juju/testing/conn.go.
+const dummyControllerName = "kontroll"
+
+func parseApiInfo(stdout io.ReadCloser) (*bootstrapResult, error) {
+	buffer := bufio.NewReader(stdout)
+
+	line, _, err := buffer.ReadLine()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	// Generated configuration by test fixtures has the controller name
-	// hard-coded to "kontroll". A simple replace should fix this for
-	// clients using this config and expecting a specific controller
-	// name.
-	output := strings.Replace(string(input), "kontroll", envName, -1)
-	err = ioutil.WriteFile(dst, []byte(output), 0644)
+	uuid := string(line)
+
+	line, _, err = buffer.ReadLine()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	workDir := string(line)
+
+	osenv.SetJujuXDGDataHome(workDir)
+	store := jujuclient.NewFileClientStore()
+	// hard-coded value in juju testing
+	// This will be replaced in JUJU_DATA copy of the juju client config.
+	currentController := dummyControllerName
+	one, err := store.ControllerByName(currentController)
+	if err != nil {
+		return nil, err
+	}
+
+	accountDetails, err := store.AccountDetails(currentController)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &bootstrapResult{
+		dummyControllerName: dummyControllerName,
+		cfgdir:              workDir,
+		uuid:                uuid,
+		username:            accountDetails.User,
+		password:            accountDetails.Password,
+		addresses:           one.APIEndpoints,
+		caCert:              []byte(one.CACert),
+	}
+	return result, nil
 }
 
 // Read the failures info file pointed by the FAKE_JUJU_FAILURES environment
@@ -331,7 +418,7 @@ type FakeJujuSuite struct {
 
 	instanceCount  int
 	machineStarted map[string]bool
-	fifoPath       string
+	filenames      fakejujuFilenames
 	logFile        *os.File
 }
 
@@ -398,20 +485,16 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	os.Setenv("PATH", binPath+":"+os.Getenv("PATH"))
 
-	s.fifoPath = filepath.Join(jujuHome, "fifo")
-	syscall.Mknod(s.fifoPath, syscall.S_IFIFO|0666, 0)
+	s.filenames = newFakeJujuFilenames("", "", jujuHome)
+	syscall.Mknod(s.filenames.fifo(), syscall.S_IFIFO|0666, 0)
 
 	// Logging
-	logsDir := os.Getenv("FAKE_JUJU_LOGS_DIR")
-	if logsDir == "" {
-		logsDir = jujuHome
-	}
-	logPath := filepath.Join(logsDir, "fake-juju.log")
+	logPath := s.filenames.logs()
 	s.logFile, err = os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	c.Assert(err, gc.IsNil)
 
 	log.SetOutput(s.logFile)
-	log.Println("Started fake-juju at", jujuHome)
+	log.Println("Started fake-juju at ", jujuHome)
 
 }
 
@@ -423,16 +506,17 @@ func (s *FakeJujuSuite) TearDownTest(c *gc.C) {
 }
 
 func (s *FakeJujuSuite) TestStart(c *gc.C) {
+	fifoPath := s.filenames.fifo()
 	watcher := s.State.Watch()
 	go func() {
-		log.Println("Open commands FIFO", s.fifoPath)
-		fd, err := os.Open(s.fifoPath)
+		log.Println("Open commands FIFO", fifoPath)
+		fd, err := os.Open(fifoPath)
 		if err != nil {
 			log.Println("Failed to open commands FIFO")
 		}
 		c.Assert(err, gc.IsNil)
 		scanner := bufio.NewScanner(fd)
-		log.Println("Listen for commands on FIFO", s.fifoPath)
+		log.Println("Listen for commands on FIFO", fifoPath)
 		scanner.Scan()
 		log.Println("Stopping fake-juju")
 		watcher.Stop()
