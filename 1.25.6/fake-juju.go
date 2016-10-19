@@ -94,22 +94,23 @@ func (fj fakejujuFilenames) cacert() string {
 }
 
 func handleCommand(command string) error {
+	filenames := newFakejujuFilenames("", "")
 	if command == "bootstrap" {
-		return bootstrap()
+		return bootstrap(filenames)
 	}
 	if command == "api-endpoints" {
-		return apiEndpoints()
+		return apiEndpoints(filenames)
 	}
 	if command == "api-info" {
-		return apiInfo()
+		return apiInfo(filenames)
 	}
 	if command == "destroy-environment" {
-		return destroyEnvironment()
+		return destroyEnvironment(filenames)
 	}
 	return errors.New("command not found")
 }
 
-func bootstrap() error {
+func bootstrap(filenames fakejujuFilenames) error {
 	envName, config, err := environmentNameAndConfig()
 	if err != nil {
 		return err
@@ -158,8 +159,8 @@ func bootstrap() error {
 	return errors.New("invalid delta")
 }
 
-func apiEndpoints() error {
-	info, err := readProcessInfo()
+func apiEndpoints(filenames fakejujuFilenames) error {
+	info, err := readProcessInfo(filenames)
 	if err != nil {
 		return err
 	}
@@ -167,8 +168,8 @@ func apiEndpoints() error {
 	return nil
 }
 
-func apiInfo() error {
-	info, err := readProcessInfo()
+func apiInfo(filenames fakejujuFilenames) error {
+	info, err := readProcessInfo(filenames)
 	if err != nil {
 		return err
 	}
@@ -177,8 +178,8 @@ func apiInfo() error {
 	return nil
 }
 
-func destroyEnvironment() error {
-	info, err := readProcessInfo()
+func destroyEnvironment(filenames fakejujuFilenames) error {
+	info, err := readProcessInfo(filenames)
 	if err != nil {
 		return err
 	}
@@ -256,8 +257,8 @@ func parseApiInfo(envName string, stdout io.ReadCloser) (*api.Info, error) {
 	return apiInfo, nil
 }
 
-func readProcessInfo() (*processInfo, error) {
-	infoPath := filepath.Join(os.Getenv("JUJU_HOME"), "fakejuju")
+func readProcessInfo(filenames fakejujuFilenames) (*processInfo, error) {
+	infoPath := filenames.info()
 	data, err := ioutil.ReadFile(infoPath)
 	if err != nil {
 		return nil, err
