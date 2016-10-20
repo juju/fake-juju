@@ -357,7 +357,7 @@ class FakeJujuTests(unittest.TestCase):
 
     def test_is_bootstrapped_datadir_missing(self):
         """FakeJuju.is_bootstrapped() returns False if the data dir is gone."""
-        fakejuju = FakeJuju.from_version("1.25.6", "/tmp/fakejuju/does/not/exist")
+        fakejuju = FakeJuju.from_version("1.25.6", "/tmp/fakejuju-no-exist")
         result = fakejuju.is_bootstrapped()
 
         self.assertFalse(result)
