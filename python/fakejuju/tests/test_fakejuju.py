@@ -293,7 +293,6 @@ class FakeJujuTests(unittest.TestCase):
             cfgdir = os.path.join(datadir, "juju")
             cli, api_info = fakejuju.bootstrap("spam", cfgdir, "secret")
             port = api_info[None].address.split(":")[-1]
-            cli.destroy_controller()
 
             files = os.listdir(datadir)
             files.extend(os.path.join("juju", name)
@@ -302,18 +301,20 @@ class FakeJujuTests(unittest.TestCase):
             with open(os.path.join(cfgdir, "environments.yaml")) as envfile:
                 data = envfile.read()
 
+            cli.destroy_controller()
+
         self.maxDiff = None
         self.assertEqual(api_info, {
             'controller': txjuju.cli.APIInfo(
                 endpoints=['localhost:' + port],
                 user='admin',
-                password='dummy-secret',
+                password='secret',
                 model_uuid='deadbeef-0bad-400d-8000-4b1d0d06f00d',
                 ),
             None: txjuju.cli.APIInfo(
                 endpoints=['localhost:' + port],
                 user='admin',
-                password='dummy-secret',
+                password='secret',
                 model_uuid=None,
                 ),
             })
