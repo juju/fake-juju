@@ -318,7 +318,7 @@ class FakeJujuTests(unittest.TestCase):
                 model_uuid=None,
                 ),
             })
-        self.assertEqual(sorted(files), [
+        self.assertItemsEqual(files, [
             'cert.ca',
             'fake-juju.log',
             'fakejuju',
