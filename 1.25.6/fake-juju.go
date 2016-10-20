@@ -75,10 +75,11 @@ func bootstrap(filenames fakejujuFilenames) error {
 	if err != nil {
 		return err
 	}
+	password := config.AdminSecret()
+
 	command := exec.Command(os.Args[0])
 	command.Env = os.Environ()
-	command.Env = append(
-		command.Env, "ADMIN_PASSWORD="+config.AdminSecret())
+	command.Env = append(command.Env, "ADMIN_PASSWORD="+password)
 	defaultSeries, _ := config.DefaultSeries()
 	command.Env = append(command.Env, "DEFAULT_SERIES="+defaultSeries)
 	stdout, err := command.StdoutPipe()
@@ -91,10 +92,17 @@ func bootstrap(filenames fakejujuFilenames) error {
 	if err != nil {
 		return err
 	}
+	// Get the API info before changing it.  The new values might
+	// not work yet.
+	apiInfo := result.apiInfo()
+	// We actually want to report the API user we added in SetUpTest().
+	result.username = "admin"
+	if password != "" {
+		result.password = password
+	}
 	if err := result.apply(filenames, envName); err != nil {
 		return err
 	}
-	apiInfo := result.apiInfo()
 
 	dialOpts := api.DialOpts{
 		DialAddressInterval: 50 * time.Millisecond,
@@ -139,8 +147,7 @@ func apiInfo(filenames fakejujuFilenames) error {
 	if err != nil {
 		return err
 	}
-	username := strings.Replace(string(info.Username), "dummy-", "", 1)
-	fmt.Printf("{\"user\": \"%s\", \"password\": \"%s\", \"environ-uuid\": \"%s\", \"state-servers\": [\"%s\"]}\n", username, info.Password, info.Uuid, info.EndpointAddr)
+	fmt.Printf("{\"user\": \"%s\", \"password\": \"%s\", \"environ-uuid\": \"%s\", \"state-servers\": [\"%s\"]}\n", info.Username, info.Password, info.Uuid, info.EndpointAddr)
 	return nil
 }
 
@@ -474,7 +481,6 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 
 	apiInfo := s.APIInfo(c)
-	//fmt.Println(apiInfo.Addrs[0])
 	jujuHome := osenv.JujuHome()
 	// IMPORTANT: don't remove this logging because it's used by the
 	// bootstrap command.
