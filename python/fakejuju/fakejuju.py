@@ -147,3 +147,7 @@ class FakeJuju(object):
         cli.bootstrap(spec, cfgfile=cfgfile)
         api_info = cli.api_info(spec.name)
         return cli, api_info
+
+    def is_bootstrapped(self):
+        """Return True if a fake-juju controller is running."""
+        return os.path.exists(self.fifo)

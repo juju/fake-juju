@@ -336,6 +336,31 @@ class FakeJujuTests(unittest.TestCase):
                 },
             })
 
+    def test_is_bootstrapped_true(self):
+        """FakeJuju.is_bootstrapped() returns True if the fifo file exists."""
+        with tempdir() as datadir:
+            fakejuju = FakeJuju.from_version("1.25.6", datadir)
+            with open(fakejuju.fifo, "w"):
+                pass
+            result = fakejuju.is_bootstrapped()
+
+        self.assertTrue(result)
+
+    def test_is_bootstrapped_false(self):
+        """FakeJuju.is_bootstrapped() returns False if the fifo is gone."""
+        with tempdir() as datadir:
+            fakejuju = FakeJuju.from_version("1.25.6", datadir)
+            result = fakejuju.is_bootstrapped()
+
+        self.assertFalse(result)
+
+    def test_is_bootstrapped_datadir_missing(self):
+        """FakeJuju.is_bootstrapped() returns False if the data dir is gone."""
+        fakejuju = FakeJuju.from_version("1.25.6", "/tmp/fakejuju/does/not/exist")
+        result = fakejuju.is_bootstrapped()
+
+        self.assertFalse(result)
+
 
 @contextmanager
 def tempdir():
