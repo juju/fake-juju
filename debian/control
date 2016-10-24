@@ -3,11 +3,32 @@ Maintainer: Free Ekanayaka <free.ekanayaka@canonical.com>
 Section: devel
 Priority: optional
 Standards-Version: 3.9.2
-Build-Depends: debhelper (>= 9), wget, python-jujuclient, golang-1.6, golang
+Build-Depends: debhelper (>= 9),
+               golang,
+               golang-1.6,
+               python-all (>= 2.6.6-3),
+               python-fixtures,
+               python-jujuclient,
+               python-testtools,
+               python-twisted-core (>= 16.0.0),
+               python-txjuju,
+               python-yaml,
+               wget
 
 Package: fake-juju
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, juju-mongodb
+Depends: ${shlibs:Depends}, ${misc:Depends},
+         juju-mongodb
 Description: A fake implentation of Juju using the dummy provider.
  Provide a fake Juju server behaving like a regular one, except
  that the provider will be a dummy one.
+
+Package: python-txjuju
+Architecture: any
+Depends: ${python:Depends}, ${misc:Depends}, ${extra:Depends}, ${shlibs:Depends},
+         python-fixtures,
+         python-testtools,
+         python-twisted-core (>= 16.0.0),
+         python-txjuju,
+         python-yaml
+Description: Python bindings for managing fake-juju.

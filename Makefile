@@ -110,7 +110,7 @@ PYTHON = python
 ifdef PYTHON_INSTALLDIR
 PYTHON_INSTALL_OPTION = --install-lib $(PYTHON_INSTALLDIR)
 else
-PYTHON_INSTALLDIR = /usr/local/lib/python2.7/dist-packages
+PYTHON_INSTALLDIR = $(DESTDIR)/usr/lib/python2.7/dist-packages
 endif
 
 PYTHON_LIB_ROOT = $(shell pwd)/python

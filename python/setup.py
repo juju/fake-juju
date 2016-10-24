@@ -42,11 +42,11 @@ for path, dirs, files in os.walk(package_name):
 
 # dependencies
 
-DEPS = ['yaml',
-        # for testing
-        'txjuju',
-        'fixtures',
+DEPS = ['fixtures',
         'testtools',
+        'txjuju',
+        'twisted',
+        'yaml',
         ]
 
 
