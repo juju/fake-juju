@@ -106,6 +106,54 @@ endif  ##########################################
 
 # for the Python library
 
+PYTHON = python
+ifdef PYTHON_INSTALLDIR
+PYTHON_INSTALL_OPTION = --install-lib $(PYTHON_INSTALLDIR)
+else
+PYTHON_INSTALLDIR = /usr/local/lib/python2.7/dist-packages
+endif
+
+PYTHON_LIB_ROOT = $(shell pwd)/python
+PYTHON_LIB_VERSION = 0.9.0b1  # TODO: read from python/fakejuju/__init__.py
+PYTHON_LIB_SOURCE_TARBALL = python/dist/fakejuju-$(PYTHON_LIB_VERSION).tar.gz
+
+$(PYTHON_LIB_SOURCE_TARBALL): python/fakejuju
+	cd python
+	$(PYTHON) setup.py sdist
+
+.PHONY: py-build
+py-build: $(PYTHON_LIB_SOURCE_TARBALL)
+
+.PHONY: py-install
+py-install: py-build
+	if [ ! "$(SKIP_PYTHON_LIB)" ]; then \
+		mkdir -p $(PYTHON_INSTALL_DIR); \
+		cd python; \
+		$(PYTHON) setup.py install $(PYTHON_INSTALL_OPTION); \
+	fi
+
+.PHONY: py-install-dev
+py-install-dev:
+	if [ ! "$(SKIP_PYTHON_LIB)" ]; then \
+		ln -snv $(PYTHON_LIB_ROOT)/fakejuju $(PYTHON_INSTALLDIR)/fakejuju; \
+	fi
+
+.PHONY: py-clean
+py-clean:
+	if [ ! "$(SKIP_PYTHON_LIB)" ]; then \
+		rm -rf python/dist; \
+		rm -rf python/fakejuju.egg-info; \
+		rm -f python/fakejuju/*.pyc; \
+		rm -f python/fakejuju/tests/*.pyc; \
+	fi
+
+.PHONY: py-test
+py-test:
+	if [ ! "$(SKIP_PYTHON_LIB)" ]; then \
+		$(PYTHON) -m unittest discover -t $(PYTHON_LIB_ROOT) -s $(PYTHON_LIB_ROOT)/fakejuju; \
+	fi
+
+
 #################################################
 # other targets
 
