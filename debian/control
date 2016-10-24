@@ -23,7 +23,7 @@ Description: A fake implentation of Juju using the dummy provider.
  Provide a fake Juju server behaving like a regular one, except
  that the provider will be a dummy one.
 
-Package: python-txjuju
+Package: python-fakejuju
 Architecture: any
 Depends: ${python:Depends}, ${misc:Depends}, ${extra:Depends}, ${shlibs:Depends},
          python-fixtures,
