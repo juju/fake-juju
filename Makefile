@@ -1,5 +1,3 @@
-JUJUCLIENT_DOWNLOADS = $(shell pwd)/tests/jujuclient-archive
-JUJUCLIENT_REQ = $(JUJUCLIENT_DOWNLOADS)/requirements
 
 
 ifdef JUJU_VERSION  #############################
@@ -98,6 +96,14 @@ test: $(BUILT_VERSIONS)
 
 
 endif  ##########################################
+
+# for the Python library
+
+#################################################
+# other targets
+
+JUJUCLIENT_DOWNLOADS = $(shell pwd)/tests/jujuclient-archive
+JUJUCLIENT_REQ = $(JUJUCLIENT_DOWNLOADS)/requirements
 
 .PHONY: ci-test
 ci-test:
