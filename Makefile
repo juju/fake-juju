@@ -28,7 +28,7 @@ juju-core_%.tar.gz:
 	wget https://launchpad.net/$$PROJECT/$(shell (echo $* | cut -f 1 -d - | cut -f 1,2 -d .))/$*/+download/$@
 
 .PHONY: build
-build: $(JUJU_VERSION)/$(JUJU_VERSION)
+build: $(JUJU_VERSION)/$(JUJU_VERSION) py-build
 
 .PHONY: build-common
 build-common: $(JUJU_TARBALL) $(JUJU_PATCH)
@@ -38,16 +38,16 @@ build-common: $(JUJU_TARBALL) $(JUJU_PATCH)
 	cd $(JUJU_VERSION) && GOPATH=$(shell pwd)/$(JUJU_VERSION) PATH=$(PATH) go build
 
 .PHONY: install
-install: $(JUJU_VERSION)/$(JUJU_VERSION)
+install: $(JUJU_VERSION)/$(JUJU_VERSION) py-install-dev
 	install -D $(JUJU_VERSION)/$(JUJU_VERSION) $(INSTALLED)
 
 .PHONY: install-dev
-install-dev: $(JUJU_VERSION)/$(JUJU_VERSION)
+install-dev: $(JUJU_VERSION)/$(JUJU_VERSION) py-install-dev
 	mkdir -p $(INSTALLDIR)
 	ln -s --backup=existing --suffix .orig $(shell pwd)/$(JUJU_VERSION)/$(JUJU_VERSION) $(INSTALLED)
 
 .PHONY: clean
-clean:
+clean: py-clean
 	rm -f $(JUJU_TARBALL)
 	rm -rf $(JUJU_VERSION)/src
 	rm -f $(JUJU_VERSION)/$(JUJU_VERSION)
@@ -55,7 +55,7 @@ clean:
 	rm -f tests/*.pyc
 
 .PHONY: test
-test: $(JUJU_VERSION)/$(JUJU_VERSION)
+test: $(JUJU_VERSION)/$(JUJU_VERSION) py-test
 	env JUJU_VERSION=$(JUJU_VERSION) python3 -m unittest tests.test_fake
 
 
@@ -71,35 +71,35 @@ BUILT_VERSIONS = $(foreach version,$(JUJU_VERSIONS),$(version)/$(version))
 
 $(BUILT_VERSIONS):
 	for VERSION in $(JUJU_VERSIONS); do \
-	    $(MAKE) build JUJU_VERSION=$$VERSION; \
+	    $(MAKE) build JUJU_VERSION=$$VERSION SKIP_PYTHON_LIB=TRUE; \
 	done
 
 .PHONY: build
-build: $(BUILT_VERSIONS)
+build: $(BUILT_VERSIONS) py-build
 
 .PHONY: install
-install:
+install: py-install
 	for VERSION in $(JUJU_VERSIONS); do \
-	    $(MAKE) install JUJU_VERSION=$$VERSION; \
+	    $(MAKE) install JUJU_VERSION=$$VERSION SKIP_PYTHON_LIB=TRUE; \
 	done
 
 .PHONY: install-dev
-install-dev:
+install-dev: py-install-dev
 	for VERSION in $(JUJU_VERSIONS); do \
-	    $(MAKE) install-dev JUJU_VERSION=$$VERSION; \
+	    $(MAKE) install-dev JUJU_VERSION=$$VERSION SKIP_PYTHON_LIB=TRUE; \
 	done
 
 .PHONY: clean
-clean:
+clean: py-clean
 	for VERSION in $(JUJU_VERSIONS) ; do \
-		$(MAKE) clean JUJU_VERSION=$$VERSION; \
+		$(MAKE) clean JUJU_VERSION=$$VERSION SKIP_PYTHON_LIB=TRUE; \
 	done	
 
 .PHONY: test
 # Use xargs here so that we don't throw away the return codes, and correctly fail if any of the tests fail
-test: $(BUILT_VERSIONS)
+test: $(BUILT_VERSIONS) py-test
 	#@echo -n $(JUJU_VERSIONS) | xargs -t -d' ' -I {} env JUJU_VERSION={} python3 -m unittest tests.test_fake
-	@echo -n $(JUJU_VERSIONS) | xargs -t -d' ' -I {} $(MAKE) test JUJU_VERSION={}
+	@echo -n $(JUJU_VERSIONS) | xargs -t -d' ' -I {} $(MAKE) test JUJU_VERSION={} SKIP_PYTHON_LIB=TRUE
 
 
 endif  ##########################################
