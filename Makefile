@@ -1,4 +1,9 @@
 
+ifdef JUJU_VERSIONS
+# If someone explicitly set JUJU_VERSIONS then we ignore JUJU_VERSION.
+JUJU_VERSION =
+endif
+
 
 ifdef JUJU_VERSION  #############################
 # for one version
@@ -57,13 +62,15 @@ test: $(JUJU_VERSION)/$(JUJU_VERSION)
 else  ###########################################
 # for all versions
 
+ifndef JUJU_VERSIONS
 JUJU1_VERSIONS = 1.24.7 1.25.6
 JUJU2_VERSIONS = 2.0-beta17
-VERSIONS = $(JUJU1_VERSIONS) $(JUJU2_VERSIONS)
-BUILT_VERSIONS = $(foreach version,$(VERSIONS),$(version)/$(version))
+JUJU_VERSIONS = $(JUJU1_VERSIONS) $(JUJU2_VERSIONS)
+endif
+BUILT_VERSIONS = $(foreach version,$(JUJU_VERSIONS),$(version)/$(version))
 
 $(BUILT_VERSIONS):
-	for VERSION in $(VERSIONS); do \
+	for VERSION in $(JUJU_VERSIONS); do \
 	    $(MAKE) build JUJU_VERSION=$$VERSION; \
 	done
 
@@ -72,27 +79,27 @@ build: $(BUILT_VERSIONS)
 
 .PHONY: install
 install:
-	for VERSION in $(VERSIONS); do \
+	for VERSION in $(JUJU_VERSIONS); do \
 	    $(MAKE) install JUJU_VERSION=$$VERSION; \
 	done
 
 .PHONY: install-dev
 install-dev:
-	for VERSION in $(VERSIONS); do \
+	for VERSION in $(JUJU_VERSIONS); do \
 	    $(MAKE) install-dev JUJU_VERSION=$$VERSION; \
 	done
 
 .PHONY: clean
 clean:
-	for VERSION in $(VERSIONS) ; do \
+	for VERSION in $(JUJU_VERSIONS) ; do \
 		$(MAKE) clean JUJU_VERSION=$$VERSION; \
 	done	
 
 .PHONY: test
 # Use xargs here so that we don't throw away the return codes, and correctly fail if any of the tests fail
 test: $(BUILT_VERSIONS)
-	#@echo -n $(VERSIONS) | xargs -t -d' ' -I {} env JUJU_VERSION={} python3 -m unittest tests.test_fake
-	@echo -n $(VERSIONS) | xargs -t -d' ' -I {} $(MAKE) test JUJU_VERSION={}
+	#@echo -n $(JUJU_VERSIONS) | xargs -t -d' ' -I {} env JUJU_VERSION={} python3 -m unittest tests.test_fake
+	@echo -n $(JUJU_VERSIONS) | xargs -t -d' ' -I {} $(MAKE) test JUJU_VERSION={}
 
 
 endif  ##########################################
