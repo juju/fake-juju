@@ -18,7 +18,8 @@ Build-Depends: debhelper (>= 9),
 Package: fake-juju
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends},
-         juju-mongodb
+         juju-mongodb,
+         python-fakejuju
 Description: A fake implentation of Juju using the dummy provider.
  Provide a fake Juju server behaving like a regular one, except
  that the provider will be a dummy one.
