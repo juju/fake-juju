@@ -107,18 +107,19 @@ endif  ##########################################
 # for the Python library
 
 PYTHON = python
-ifdef PYTHON_INSTALLDIR
-PYTHON_INSTALL_OPTION = --install-lib $(PYTHON_INSTALLDIR)
-else
+ifndef PYTHON_INSTALLDIR
 PYTHON_INSTALLDIR = $(DESTDIR)/usr/lib/python2.7/dist-packages
 endif
+PYTHON_INSTALL_OPTION = --install-lib $(PYTHON_INSTALLDIR)
 
 PYTHON_LIB_ROOT = $(shell pwd)/python
-PYTHON_LIB_VERSION = 0.9.0b1  # TODO: read from python/fakejuju/__init__.py
-PYTHON_LIB_SOURCE_TARBALL = python/dist/fakejuju-$(PYTHON_LIB_VERSION).tar.gz
+# TODO: read from python/fakejuju/__init__.py
+PYTHON_LIB_VERSION = 0.9.0b1
+PYTHON_LIB_SOURCE_TARBALL = $(PYTHON_LIB_ROOT)/dist/fakejuju-$(PYTHON_LIB_VERSION).tar.gz
 
 $(PYTHON_LIB_SOURCE_TARBALL): python/fakejuju
-	cd python
+	echo $(PYTHON_LIB_SOURCE_TARBALL)
+	cd python; \
 	$(PYTHON) setup.py sdist
 
 .PHONY: py-build
