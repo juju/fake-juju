@@ -56,18 +56,18 @@ func main() {
 func handleCommand(command string) error {
 	filenames := newFakeJujuFilenames("", "", "")
 	if command == "bootstrap" {
-		return bootstrap(filenames)
+		return handleBootstrap(filenames)
 	}
 	if command == "show-controller" {
-		return apiInfo(filenames)
+		return handleAPIInfo(filenames)
 	}
 	if command == "destroy-controller" {
-		return destroyController(filenames)
+		return handleDestroyController(filenames)
 	}
 	return errors.New("command not found")
 }
 
-func bootstrap(filenames fakejujuFilenames) error {
+func handleBootstrap(filenames fakejujuFilenames) error {
 	argc := len(os.Args)
 	if argc < 4 {
 		return errors.New(
@@ -139,7 +139,7 @@ func waitForBootstrapCompletion(result *bootstrapResult) error {
 	return errors.New("invalid delta")
 }
 
-func apiInfo(filenames fakejujuFilenames) error {
+func handleAPIInfo(filenames fakejujuFilenames) error {
 	info, err := readProcessInfo(filenames)
 	if err != nil {
 		return err
@@ -159,7 +159,7 @@ func apiInfo(filenames fakejujuFilenames) error {
 	return nil
 }
 
-func destroyController(filenames fakejujuFilenames) error {
+func handleDestroyController(filenames fakejujuFilenames) error {
 	info, err := readProcessInfo(filenames)
 	if err != nil {
 		return err
