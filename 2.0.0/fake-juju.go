@@ -99,6 +99,12 @@ func handleBootstrap(filenames fakejujuFilenames) error {
 		}
 		return err
 	}
+	if err := updateBootstrapResult(result); err != nil {
+		if err := destroyController(filenames); err != nil {
+			fmt.Printf("could not destroy controller when updating bootstrap result failed: %v\n", err)
+		}
+		return err
+	}
 	if err := result.apply(filenames, controllerName); err != nil {
 		if err := destroyController(filenames); err != nil {
 			fmt.Printf("could not destroy controller when setup failed: %v\n", err)
@@ -404,31 +410,37 @@ func parseApiInfo(stdout io.ReadCloser) (*bootstrapResult, error) {
 	}
 	workDir := string(line)
 
-	osenv.SetJujuXDGDataHome(workDir)
-	store := jujuclient.NewFileClientStore()
-	// hard-coded value in juju testing
-	// This will be replaced in JUJU_DATA copy of the juju client config.
-	currentController := dummyControllerName
-	one, err := store.ControllerByName(currentController)
-	if err != nil {
-		return nil, err
-	}
-
-	accountDetails, err := store.AccountDetails(currentController)
-	if err != nil {
-		return nil, err
-	}
-
 	result := &bootstrapResult{
 		dummyControllerName: dummyControllerName,
 		cfgdir:              workDir,
 		uuid:                uuid,
-		username:            accountDetails.User,
-		password:            accountDetails.Password,
-		addresses:           one.APIEndpoints,
-		caCert:              []byte(one.CACert),
 	}
 	return result, nil
+}
+
+func updateBootstrapResult(result *bootstrapResult) error {
+	osenv.SetJujuXDGDataHome(result.cfgdir)
+	store := jujuclient.NewFileClientStore()
+
+	// hard-coded value in juju testing
+	// This will be replaced in JUJU_DATA copy of the juju client config.
+	currentController := result.dummyControllerName
+
+	one, err := store.ControllerByName(currentController)
+	if err != nil {
+		return err
+	}
+	result.addresses = one.APIEndpoints
+	result.caCert = []byte(one.CACert)
+
+	accountDetails, err := store.AccountDetails(currentController)
+	if err != nil {
+		return err
+	}
+	result.username = accountDetails.User
+	result.password = accountDetails.Password
+
+	return nil
 }
 
 // Read the failures info file pointed by the FAKE_JUJU_FAILURES environment
