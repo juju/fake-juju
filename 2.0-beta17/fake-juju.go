@@ -38,17 +38,19 @@ import (
 )
 
 func main() {
+	code := 0
 	if len(os.Args) > 1 {
-		code := 0
 		err := handleCommand(os.Args[1])
 		if err != nil {
 			fmt.Println(err.Error())
 			code = 1
 		}
-		os.Exit(code)
+	} else {
+		// This kicks off the daemon.  See FakeJujuSuite below.
+		t := &testing.T{}
+		coretesting.MgoTestPackage(t)
 	}
-	t := &testing.T{}
-	coretesting.MgoTestPackage(t)
+	os.Exit(code)
 }
 
 func handleCommand(command string) error {
@@ -150,7 +152,7 @@ func destroyController(filenames fakejujuFilenames) error {
 		return err
 	}
 	filenames = newFakeJujuFilenames("", "", info.WorkDir)
-	fd, err := os.OpenFile(filenames.fifo(), os.O_APPEND|os.O_WRONLY, 0600)
+	fd, err := os.OpenFile(filenames.fifoFile(), os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}
@@ -162,6 +164,7 @@ func destroyController(filenames fakejujuFilenames) error {
 	return nil
 }
 
+// processInfo holds all the information that fake-juju uses internally.
 type processInfo struct {
 	WorkDir      string
 	EndpointAddr string
@@ -170,7 +173,7 @@ type processInfo struct {
 }
 
 func readProcessInfo(filenames fakejujuFilenames) (*processInfo, error) {
-	infoPath := filenames.info()
+	infoPath := filenames.infoFile()
 	data, err := ioutil.ReadFile(infoPath)
 	if err != nil {
 		return nil, err
@@ -191,6 +194,8 @@ func (info processInfo) write(infoPath string) error {
 	return nil
 }
 
+// fakejujuFilenames encapsulates the paths to all the directories and
+// files that are relevant to fake-juju.
 type fakejujuFilenames struct {
 	datadir string
 	logsdir string
@@ -225,22 +230,34 @@ func (fj fakejujuFilenames) ensureDirsExist() error {
 	return nil
 }
 
-func (fj fakejujuFilenames) info() string {
+// infoFile() returns the path to the file that fake-juju uses as
+// its persistent storage for internal data.
+func (fj fakejujuFilenames) infoFile() string {
 	return filepath.Join(fj.datadir, "fakejuju")
 }
 
-func (fj fakejujuFilenames) logs() string {
+// logsFile() returns the path to the file where fake-juju writes
+// its logs.  Note that the normal Juju logs are not written here.
+func (fj fakejujuFilenames) logsFile() string {
 	return filepath.Join(fj.logsdir, "fake-juju.log")
 }
 
-func (fj fakejujuFilenames) fifo() string {
+// fifoFile() returns the path to the FIFO file used by fake-juju.
+// The FIFO is used by the fake-juju subcommands to interact with
+// the daemon.
+func (fj fakejujuFilenames) fifoFile() string {
 	return filepath.Join(fj.datadir, "fifo")
 }
 
-func (fj fakejujuFilenames) cacert() string {
+// caCertFile() returns the path to the file holding the CA certificate
+// used by the Juju API server.  fake-juju writes the cert there as a
+// convenience for users.  It is not actually used for anything.
+func (fj fakejujuFilenames) caCertFile() string {
 	return filepath.Join(fj.datadir, "cert.ca")
 }
 
+// bootstrapResult encapsulates all significant information that came
+// from bootstrapping a controller.
 type bootstrapResult struct {
 	dummyControllerName string
 	cfgdir              string
@@ -251,6 +268,7 @@ type bootstrapResult struct {
 	caCert              []byte
 }
 
+// apiInfo() composes the Juju API info corresponding to the result.
 func (br bootstrapResult) apiInfo() *api.Info {
 	return &api.Info{
 		Addrs:    br.addresses,
@@ -261,6 +279,8 @@ func (br bootstrapResult) apiInfo() *api.Info {
 	}
 }
 
+// fakeJujuInfo() composes, from the result, the set of information
+// that fake-juju should use internally.
 func (br bootstrapResult) fakeJujuInfo() *processInfo {
 	return &processInfo{
 		WorkDir:      br.cfgdir,
@@ -270,22 +290,31 @@ func (br bootstrapResult) fakeJujuInfo() *processInfo {
 	}
 }
 
-func (br bootstrapResult) logsSymlink(target string) (string, string) {
+// logsSymlinkFilenames() determines the source and target paths for
+// a symlink to the fake-juju logs file.  Such a symlink is relevant
+// because the fake-juju daemon may not know where the log file is
+// meant to go. It defaults to putting the log file in the default Juju
+// config dir. In that case, a symlink should be created from there to
+// the user-defined Juju config dir ($JUJU_DATA).
+func (br bootstrapResult) logsSymlinkFilenames(targetLogsFile string) (source, target string) {
 	if os.Getenv("FAKE_JUJU_LOGS_DIR") != "" {
 		return "", ""
 	}
 
 	filenames := newFakeJujuFilenames("", "", br.cfgdir)
-	source := filenames.logs()
+	source = filenames.logsFile()
+	target = targetLogsFile
 	return source, target
 }
 
+// apply() writes out the information from the bootstrap result to the
+// various files identified by the provided filenames.
 func (br bootstrapResult) apply(filenames fakejujuFilenames, controllerName string) error {
-	if err := br.fakeJujuInfo().write(filenames.info()); err != nil {
+	if err := br.fakeJujuInfo().write(filenames.infoFile()); err != nil {
 		return err
 	}
 
-	logsSource, logsTarget := br.logsSymlink(filenames.logs())
+	logsSource, logsTarget := br.logsSymlinkFilenames(filenames.logsFile())
 	if logsSource != "" && logsTarget != "" {
 		if err := os.Symlink(logsSource, logsTarget); err != nil {
 			return err
@@ -296,17 +325,17 @@ func (br bootstrapResult) apply(filenames fakejujuFilenames, controllerName stri
 		return err
 	}
 
-	if err := ioutil.WriteFile(filenames.cacert(), br.caCert, 0644); err != nil {
+	if err := ioutil.WriteFile(filenames.caCertFile(), br.caCert, 0644); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (br bootstrapResult) copyConfig(cfgdir, controllerName string) error {
+func (br bootstrapResult) copyConfig(targetCfgDir, controllerName string) error {
 	for _, name := range []string{"controllers.yaml", "models.yaml", "accounts.yaml"} {
 		source := filepath.Join(br.cfgdir, name)
-		target := filepath.Join(cfgdir, name)
+		target := filepath.Join(targetCfgDir, name)
 
 		input, err := ioutil.ReadFile(source)
 		if err != nil {
@@ -323,7 +352,7 @@ func (br bootstrapResult) copyConfig(cfgdir, controllerName string) error {
 		}
 	}
 
-	current := filepath.Join(cfgdir, "current-controller")
+	current := filepath.Join(targetCfgDir, "current-controller")
 	if err := ioutil.WriteFile(current, []byte(controllerName), 0644); err != nil {
 		return err
 	}
@@ -413,6 +442,10 @@ func readFailuresInfo() (map[string]bool, error) {
 	return failuresInfo, nil
 }
 
+//===================================================================
+// The fake-juju daemon (started by bootstrap) is found here.  It is
+// implemented as a test suite.
+
 type FakeJujuSuite struct {
 	jujutesting.JujuConnSuite
 
@@ -486,10 +519,10 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	os.Setenv("PATH", binPath+":"+os.Getenv("PATH"))
 
 	s.filenames = newFakeJujuFilenames("", "", jujuHome)
-	syscall.Mknod(s.filenames.fifo(), syscall.S_IFIFO|0666, 0)
+	syscall.Mknod(s.filenames.fifoFile(), syscall.S_IFIFO|0666, 0)
 
 	// Logging
-	logPath := s.filenames.logs()
+	logPath := s.filenames.logsFile()
 	s.logFile, err = os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	c.Assert(err, gc.IsNil)
 
@@ -506,7 +539,7 @@ func (s *FakeJujuSuite) TearDownTest(c *gc.C) {
 }
 
 func (s *FakeJujuSuite) TestStart(c *gc.C) {
-	fifoPath := s.filenames.fifo()
+	fifoPath := s.filenames.fifoFile()
 	watcher := s.State.Watch()
 	go func() {
 		log.Println("Open commands FIFO", fifoPath)

@@ -1,6 +1,7 @@
 # Copyright 2016 Canonical Limited.  All rights reserved.
 
 from contextlib import contextmanager
+import json
 import os
 import shutil
 import tempfile
@@ -288,44 +289,58 @@ class FakeJujuTests(unittest.TestCase):
 
     def test_bootstrap(self):
         """FakeJuju.bootstrap() bootstraps from scratch using fake-juju."""
-        with tempdir() as datadir:
-            fakejuju = FakeJuju.from_version("1.25.6", datadir)
-            cfgdir = os.path.join(datadir, "juju")
-            cli, api_info = fakejuju.bootstrap("spam", cfgdir, "secret")
-            port = api_info[None].address.split(":")[-1]
+        expected = txjuju.cli.APIInfo(
+                endpoints=['localhost:12727'],
+                user='admin',
+                password='dummy-secret',
+                model_uuid='deadbeef-0bad-400d-8000-4b1d0d06f00d',
+                )
+        version = "1.25.6"
+        with tempdir() as testdir:
+            bindir = os.path.join(testdir, "bin")
+            datadir = os.path.join(testdir, "fakejuju")
+            cfgdir = os.path.join(testdir, ".juju")
 
-            files = os.listdir(datadir)
-            files.extend(os.path.join("juju", name)
+            logfilename = write_fakejuju_script(
+                version, bindir, datadir, cfgdir, expected)
+            fakejuju = FakeJuju.from_version(version, cfgdir, bindir=bindir)
+
+            cli, api_info = fakejuju.bootstrap("spam", cfgdir, "secret")
+
+            files = []
+            files.extend(os.path.join(os.path.basename(datadir), name)
+                         for name in os.listdir(datadir))
+            files.extend(os.path.join(os.path.basename(cfgdir), name)
                          for name in os.listdir(cfgdir))
-            files.sort()
             with open(os.path.join(cfgdir, "environments.yaml")) as envfile:
                 data = envfile.read()
 
             cli.destroy_controller()
+            with open(logfilename) as logfile:
+                calls = [line.strip() for line in logfile]
 
         self.maxDiff = None
         self.assertEqual(api_info, {
-            'controller': txjuju.cli.APIInfo(
-                endpoints=['localhost:' + port],
-                user='admin',
-                password='secret',
-                model_uuid='deadbeef-0bad-400d-8000-4b1d0d06f00d',
-                ),
-            None: txjuju.cli.APIInfo(
-                endpoints=['localhost:' + port],
-                user='admin',
-                password='secret',
-                model_uuid=None,
-                ),
+            'controller': expected,
+            None: expected._replace(model_uuid=None),
             })
+        subcommands = []
+        for call in calls:
+            args = call.split()
+            self.assertEqual(os.path.basename(args[0]), "fake-juju-" + version)
+            subcommands.append(args[1])
+        self.assertEqual(subcommands, [
+            "bootstrap",
+            "api-info",
+            "destroy-environment",
+            ])
         self.assertItemsEqual(files, [
-            'cert.ca',
-            'fake-juju.log',
-            'fakejuju',
-            'fifo',
-            'juju',
-            'juju/environments',
-            'juju/environments.yaml',
+            '.juju/environments',
+            '.juju/environments.yaml',
+            'fakejuju/cert.ca',
+            'fakejuju/fake-juju.log',
+            'fakejuju/fakejuju',
+            'fakejuju/fifo',
             ])
         self.assertEqual(yaml.load(data), {
             "environments": {
@@ -361,6 +376,69 @@ class FakeJujuTests(unittest.TestCase):
         result = fakejuju.is_bootstrapped()
 
         self.assertFalse(result)
+
+
+FAKE_JUJU_SCRIPT = """\
+#!/usr/bin/env python
+
+import os.path
+import sys
+
+with open("{logfile}", "a") as logfile:
+    logfile.write(" ".join(sys.argv) + "\\n")
+
+if sys.argv[1] == "bootstrap":
+    for filename in ("cert.ca", "fake-juju.log", "fakejuju", "fifo"):
+        with open(os.path.join("{datadir}", filename), "w"):
+            pass  # Touch the file.
+    for filename in ("environments",):
+        with open(os.path.join("{cfgdir}", filename), "w"):
+            pass  # Touch the file.
+elif sys.argv[1] in ("api-info", "show-controller"):
+    print('''{output}''')
+
+"""
+
+
+def write_fakejuju_script(version, bindir, datadir, cfgdir, api_info):
+    if version.startswith("1."):
+        raw_api_info = {
+            "state-servers": api_info.endpoints,
+            "user": api_info.user,
+            "password": api_info.password,
+            "environ-uuid": api_info.model_uuid,
+            }
+    else:
+        raw_api_info = {
+            "details": {
+                "api-endpoints": api_info.endpoints,
+                },
+            "account": {
+                "user": api_info.user + "@local",
+                "password": api_info.password,
+                },
+            "models": {
+                "controller": {
+                    "uuid": api_info.model_uuid,
+                    },
+                "default": {
+                    "uuid": api_info.model_uuid,
+                    },
+                },
+            }
+    output = json.dumps(raw_api_info)
+
+    logfile = os.path.join(bindir, "calls.log")
+    script = FAKE_JUJU_SCRIPT.format(
+        datadir=datadir, cfgdir=cfgdir, logfile=logfile, output=output)
+    filename = get_filename(version, bindir)
+    os.makedirs(os.path.dirname(filename))
+    with open(filename, "w") as scriptfile:
+        scriptfile.write(script)
+    os.chmod(filename, 0o755)
+    os.makedirs(datadir)
+
+    return logfile
 
 
 @contextmanager
