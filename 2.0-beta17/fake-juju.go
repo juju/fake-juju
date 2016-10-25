@@ -556,7 +556,7 @@ func (s *FakeJujuSuite) TestStart(c *gc.C) {
 			if err := os.Rename(fifoPath, fifoPath+".destroyed"); err != nil {
 				c.Logf("failed renaming FIFO file: %s", err)
 			}
-			infofile := s.filenames.info()
+			infofile := s.filenames.infoFile()
 			if err := os.Rename(infofile, infofile+".destroyed"); err != nil {
 				c.Logf("failed renaming info file: %s", err)
 			}
