@@ -108,7 +108,7 @@ class Juju2FakeTest(_JujuFakeTest, unittest.TestCase):
         output = subprocess.check_output(args, env=env)
         api_info = json.loads(output.decode())
         endpoint = str(api_info[name]["details"]["api-endpoints"][0])
-        model = api_info[name]["current-model"]
+        model = api_info[name]["current-model"].split("/", 1)[-1]
         uuid = api_info[name]["models"][model]["uuid"]
         password = api_info[name]["account"]["password"]
         return endpoint, uuid, password

@@ -76,8 +76,7 @@ func bootstrap(filenames fakejujuFilenames) error {
 	if err := filenames.ensureDirsExist(); err != nil {
 		return err
 	}
-	// XXX Swap the 2 args for juju-2.0-final.
-	controllerName := os.Args[argc-2]
+	controllerName := os.Args[argc-1]
 	command := exec.Command(os.Args[0])
 	command.Env = os.Environ()
 	command.Env = append(
@@ -137,9 +136,11 @@ func apiInfo(filenames fakejujuFilenames) error {
 	jujuHome := os.Getenv("JUJU_DATA")
 	osenv.SetJujuXDGDataHome(jujuHome)
 	cmd := controller.NewShowControllerCommand()
-	ctx, err := coretesting.RunCommandInDir(
-		nil, cmd, os.Args[2:], info.WorkDir)
-	if err != nil {
+	if err := coretesting.InitCommand(cmd, os.Args[2:]); err != nil {
+		return err
+	}
+	ctx := coretesting.ContextForDir(nil, info.WorkDir)
+	if err := cmd.Run(ctx); err != nil {
 		return err
 	}
 	fmt.Print(ctx.Stdout)
@@ -491,7 +492,7 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	c.Assert(stateServer.SetProviderAddresses(address), gc.IsNil)
 	now := time.Now()
 	sInfo := states.StatusInfo{
-		Status:  states.StatusStarted,
+		Status:  states.Started,
 		Message: "",
 		Since:   &now,
 	}
@@ -625,12 +626,12 @@ func (s *FakeJujuSuite) handleAddMachine(id string) error {
 	}
 	status, _ := machine.Status()
 	log.Println("Machine has status:", string(status.Status), status.Message)
-	if status.Status == states.StatusPending {
+	if status.Status == states.Pending {
 		if err = s.startMachine(machine); err != nil {
 			log.Println("Got error with startMachine:", err)
 			return err
 		}
-	} else if status.Status == states.StatusStarted {
+	} else if status.Status == states.Started {
 		log.Println("Starting units on machine", id)
 		if _, ok := s.machineStarted[id]; !ok {
 			s.machineStarted[id] = true
@@ -661,19 +662,19 @@ func (s *FakeJujuSuite) handleAddUnit(id string) error {
 		return err
 	}
 	machineStatus, _ := machine.Status()
-	if machineStatus.Status != states.StatusStarted {
+	if machineStatus.Status != states.Started {
 		return nil
 	}
 	status, _ := unit.Status()
 	log.Println("Unit has status", string(status.Status), status.Message)
-	if status.Status != states.StatusActive && status.Status != states.StatusError {
+	if status.Status != states.Active && status.Status != states.Error {
 		log.Println("Start unit", id)
 		err = s.startUnit(unit)
 		if err != nil {
 			log.Println("Got error changing unit status", id, err)
 			return err
 		}
-	} else if status.Status != states.StatusError {
+	} else if status.Status != states.Error {
 		failuresInfo, err := readFailuresInfo()
 		if err != nil {
 			return err
@@ -684,7 +685,7 @@ func (s *FakeJujuSuite) handleAddUnit(id string) error {
 				log.Println("Got error checking agent status", id, err)
 				return err
 			}
-			if agentStatus.Status != states.StatusError {
+			if agentStatus.Status != states.Error {
 				log.Println("Error unit", id)
 				err = s.errorUnit(unit)
 				if err != nil {
@@ -701,7 +702,7 @@ func (s *FakeJujuSuite) startMachine(machine *state.Machine) error {
 	time.Sleep(500 * time.Millisecond)
 	now := time.Now()
 	sInfo := states.StatusInfo{
-		Status:  states.StatusStarted,
+		Status:  states.Started,
 		Message: "",
 		Since:   &now,
 	}
@@ -734,7 +735,7 @@ func (s *FakeJujuSuite) errorMachine(machine *state.Machine) error {
 	time.Sleep(500 * time.Millisecond)
 	now := time.Now()
 	sInfo := states.StatusInfo{
-		Status:  states.StatusError,
+		Status:  states.Error,
 		Message: "machine errored",
 		Since:   &now,
 	}
@@ -753,7 +754,7 @@ func (s *FakeJujuSuite) startUnits(machine *state.Machine) error {
 	return nil
 	for _, unit := range units {
 		unitStatus, _ := unit.Status()
-		if unitStatus.Status != states.StatusActive {
+		if unitStatus.Status != states.Active {
 			if err = s.startUnit(unit); err != nil {
 				return err
 			}
@@ -765,7 +766,7 @@ func (s *FakeJujuSuite) startUnits(machine *state.Machine) error {
 func (s *FakeJujuSuite) startUnit(unit *state.Unit) error {
 	now := time.Now()
 	sInfo := states.StatusInfo{
-		Status:  states.StatusStarted,
+		Status:  states.Started,
 		Message: "",
 		Since:   &now,
 	}
@@ -783,7 +784,7 @@ func (s *FakeJujuSuite) startUnit(unit *state.Unit) error {
 		return err
 	}
 	idleInfo := states.StatusInfo{
-		Status:  states.StatusIdle,
+		Status:  states.Idle,
 		Message: "",
 		Since:   &now,
 	}
@@ -798,7 +799,7 @@ func (s *FakeJujuSuite) errorUnit(unit *state.Unit) error {
 	log.Println("Erroring unit", unit.Name())
 	now := time.Now()
 	sInfo := states.StatusInfo{
-		Status:  states.StatusIdle,
+		Status:  states.Idle,
 		Message: "unit errored",
 		Since:   &now,
 	}
