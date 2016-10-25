@@ -77,6 +77,8 @@ func bootstrap(filenames fakejujuFilenames) error {
 		return err
 	}
 	controllerName := os.Args[argc-1]
+
+	// Start the fake-juju daemon.
 	command := exec.Command(os.Args[0])
 	command.Env = os.Environ()
 	command.Env = append(
@@ -89,6 +91,7 @@ func bootstrap(filenames fakejujuFilenames) error {
 	}
 	command.Start()
 
+	// Get the internal info from the daemon and store it.
 	result, err := parseApiInfo(stdout)
 	if err != nil {
 		return err
@@ -98,6 +101,7 @@ func bootstrap(filenames fakejujuFilenames) error {
 	}
 	apiInfo := result.apiInfo()
 
+	// Wait for the daemon to finish starting up.
 	dialOpts := api.DialOpts{
 		DialAddressInterval: 50 * time.Millisecond,
 		Timeout:             5 * time.Second,
