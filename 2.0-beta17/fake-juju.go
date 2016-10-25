@@ -150,7 +150,7 @@ func destroyController(filenames fakejujuFilenames) error {
 		return err
 	}
 	filenames = newFakeJujuFilenames("", "", info.WorkDir)
-	fd, err := os.OpenFile(filenames.fifo(), os.O_APPEND|os.O_WRONLY, 0600)
+	fd, err := os.OpenFile(filenames.fifoFile(), os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}
@@ -170,7 +170,7 @@ type processInfo struct {
 }
 
 func readProcessInfo(filenames fakejujuFilenames) (*processInfo, error) {
-	infoPath := filenames.info()
+	infoPath := filenames.infoFile()
 	data, err := ioutil.ReadFile(infoPath)
 	if err != nil {
 		return nil, err
@@ -225,19 +225,19 @@ func (fj fakejujuFilenames) ensureDirsExist() error {
 	return nil
 }
 
-func (fj fakejujuFilenames) info() string {
+func (fj fakejujuFilenames) infoFile() string {
 	return filepath.Join(fj.datadir, "fakejuju")
 }
 
-func (fj fakejujuFilenames) logs() string {
+func (fj fakejujuFilenames) logsFile() string {
 	return filepath.Join(fj.logsdir, "fake-juju.log")
 }
 
-func (fj fakejujuFilenames) fifo() string {
+func (fj fakejujuFilenames) fifoFile() string {
 	return filepath.Join(fj.datadir, "fifo")
 }
 
-func (fj fakejujuFilenames) cacert() string {
+func (fj fakejujuFilenames) caCertFile() string {
 	return filepath.Join(fj.datadir, "cert.ca")
 }
 
@@ -276,16 +276,16 @@ func (br bootstrapResult) logsSymlink(target string) (string, string) {
 	}
 
 	filenames := newFakeJujuFilenames("", "", br.cfgdir)
-	source := filenames.logs()
+	source := filenames.logsFile()
 	return source, target
 }
 
 func (br bootstrapResult) apply(filenames fakejujuFilenames, controllerName string) error {
-	if err := br.fakeJujuInfo().write(filenames.info()); err != nil {
+	if err := br.fakeJujuInfo().write(filenames.infoFile()); err != nil {
 		return err
 	}
 
-	logsSource, logsTarget := br.logsSymlink(filenames.logs())
+	logsSource, logsTarget := br.logsSymlink(filenames.logsFile())
 	if logsSource != "" && logsTarget != "" {
 		if err := os.Symlink(logsSource, logsTarget); err != nil {
 			return err
@@ -296,17 +296,17 @@ func (br bootstrapResult) apply(filenames fakejujuFilenames, controllerName stri
 		return err
 	}
 
-	if err := ioutil.WriteFile(filenames.cacert(), br.caCert, 0644); err != nil {
+	if err := ioutil.WriteFile(filenames.caCertFile(), br.caCert, 0644); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (br bootstrapResult) copyConfig(cfgdir, controllerName string) error {
+func (br bootstrapResult) copyConfig(targetCfgDir, controllerName string) error {
 	for _, name := range []string{"controllers.yaml", "models.yaml", "accounts.yaml"} {
 		source := filepath.Join(br.cfgdir, name)
-		target := filepath.Join(cfgdir, name)
+		target := filepath.Join(targetCfgDir, name)
 
 		input, err := ioutil.ReadFile(source)
 		if err != nil {
@@ -323,7 +323,7 @@ func (br bootstrapResult) copyConfig(cfgdir, controllerName string) error {
 		}
 	}
 
-	current := filepath.Join(cfgdir, "current-controller")
+	current := filepath.Join(targetCfgDir, "current-controller")
 	if err := ioutil.WriteFile(current, []byte(controllerName), 0644); err != nil {
 		return err
 	}
@@ -486,10 +486,10 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	os.Setenv("PATH", binPath+":"+os.Getenv("PATH"))
 
 	s.filenames = newFakeJujuFilenames("", "", jujuHome)
-	syscall.Mknod(s.filenames.fifo(), syscall.S_IFIFO|0666, 0)
+	syscall.Mknod(s.filenames.fifoFile(), syscall.S_IFIFO|0666, 0)
 
 	// Logging
-	logPath := s.filenames.logs()
+	logPath := s.filenames.logsFile()
 	s.logFile, err = os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	c.Assert(err, gc.IsNil)
 
@@ -506,7 +506,7 @@ func (s *FakeJujuSuite) TearDownTest(c *gc.C) {
 }
 
 func (s *FakeJujuSuite) TestStart(c *gc.C) {
-	fifoPath := s.filenames.fifo()
+	fifoPath := s.filenames.fifoFile()
 	watcher := s.State.Watch()
 	go func() {
 		log.Println("Open commands FIFO", fifoPath)
