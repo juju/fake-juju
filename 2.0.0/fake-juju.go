@@ -31,6 +31,7 @@ import (
 	coretesting "github.com/juju/juju/testing"
 	"github.com/juju/juju/testing/factory"
 	"github.com/juju/juju/version"
+	"github.com/juju/utils"
 	semversion "github.com/juju/version"
 	corecharm "gopkg.in/juju/charmrepo.v2-unstable"
 	"gopkg.in/juju/names.v2"
@@ -405,6 +406,10 @@ func parseApiInfo(stdout io.ReadCloser) (*bootstrapResult, error) {
 		return nil, err
 	}
 	uuid := string(line)
+	if !utils.IsValidUUIDString(uuid) {
+		data, _ := ioutil.ReadAll(stdout)
+		return nil, fmt.Errorf("%s\n%s", line, data)
+	}
 
 	line, _, err = buffer.ReadLine()
 	if err != nil {
@@ -547,8 +552,6 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	jujuHome := osenv.JujuXDGDataHome()
 	// IMPORTANT: don't remove this logging because it's used by the
 	// bootstrap command.
-	fmt.Println(apiInfo.ModelTag.Id())
-	fmt.Println(jujuHome)
 
 	binPath := filepath.Join(jujuHome, "bin")
 	os.Mkdir(binPath, 0755)
@@ -569,6 +572,9 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	log.SetOutput(s.logFile)
 	log.Println("Started fake-juju at ", jujuHome)
 
+	// Send the info back to the bootstrap command.
+	fmt.Println(apiInfo.ModelTag.Id())
+	fmt.Println(jujuHome)
 }
 
 func (s *FakeJujuSuite) TearDownTest(c *gc.C) {
