@@ -67,7 +67,7 @@ func handleCommand(command string) error {
 	return errors.New("command not found")
 }
 
-func handleBootstrap(filenames fakejujuFilenames) error {
+func handleBootstrap(filenames fakejujuFilenames) (returnedErr error) {
 	argc := len(os.Args)
 	if argc < 4 {
 		return errors.New(
@@ -91,38 +91,38 @@ func handleBootstrap(filenames fakejujuFilenames) error {
 	}
 	command.Start()
 
+	var whence string
+	defer func() {
+		if returnedErr != nil {
+			if err := destroyController(filenames); err != nil {
+				fmt.Printf("could not destroy controller when %s failed: %v\n", whence, err)
+			}
+			returnedErr = fmt.Errorf("bootstrap failed while %s: %v", whence, returnedErr)
+		}
+	}()
+
 	// Get the internal info from the daemon and store it.
 	result, err := parseApiInfo(stdout)
 	if err != nil {
-		if err := destroyController(filenames); err != nil {
-			fmt.Printf("could not destroy controller when parsing bootstrap result failed: %v\n", err)
-		}
+		whence = "parsing bootstrap result"
 		return err
 	}
 	if err := result.copyConfig(os.Getenv("JUJU_DATA"), controllerName); err != nil {
-		if err := destroyController(filenames); err != nil {
-			fmt.Printf("could not destroy controller when copying config failed: %v\n", err)
-		}
+		whence = "copying config"
 		return err
 	}
 	if err := updateBootstrapResult(result); err != nil {
-		if err := destroyController(filenames); err != nil {
-			fmt.Printf("could not destroy controller when updating bootstrap result failed: %v\n", err)
-		}
+		whence = "updating bootstrap result"
 		return err
 	}
 	if err := result.apply(filenames); err != nil {
-		if err := destroyController(filenames); err != nil {
-			fmt.Printf("could not destroy controller when setup failed: %v\n", err)
-		}
+		whence = "setup"
 		return err
 	}
 
 	// Wait for the daemon to finish starting up.
 	if err := waitForBootstrapCompletion(result); err != nil {
-		if err := destroyController(filenames); err != nil {
-			fmt.Printf("could not destroy controller when waiting-for-ready failed: %v\n", err)
-		}
+		whence = "waiting-for-ready"
 		return err
 	}
 
