@@ -99,13 +99,19 @@ func handleBootstrap(filenames fakejujuFilenames) error {
 		}
 		return err
 	}
+	if err := result.copyConfig(os.Getenv("JUJU_DATA"), controllerName); err != nil {
+		if err := destroyController(filenames); err != nil {
+			fmt.Printf("could not destroy controller when copying config failed: %v\n", err)
+		}
+		return err
+	}
 	if err := updateBootstrapResult(result); err != nil {
 		if err := destroyController(filenames); err != nil {
 			fmt.Printf("could not destroy controller when updating bootstrap result failed: %v\n", err)
 		}
 		return err
 	}
-	if err := result.apply(filenames, controllerName); err != nil {
+	if err := result.apply(filenames); err != nil {
 		if err := destroyController(filenames); err != nil {
 			fmt.Printf("could not destroy controller when setup failed: %v\n", err)
 		}
@@ -341,7 +347,7 @@ func (br bootstrapResult) logsSymlinkFilenames(targetLogsFile string) (source, t
 
 // apply() writes out the information from the bootstrap result to the
 // various files identified by the provided filenames.
-func (br bootstrapResult) apply(filenames fakejujuFilenames, controllerName string) error {
+func (br bootstrapResult) apply(filenames fakejujuFilenames) error {
 	if err := br.fakeJujuInfo().write(filenames.infoFile()); err != nil {
 		return err
 	}
@@ -351,10 +357,6 @@ func (br bootstrapResult) apply(filenames fakejujuFilenames, controllerName stri
 		if err := os.Symlink(logsSource, logsTarget); err != nil {
 			return err
 		}
-	}
-
-	if err := br.copyConfig(os.Getenv("JUJU_DATA"), controllerName); err != nil {
-		return err
 	}
 
 	if err := ioutil.WriteFile(filenames.caCertFile(), br.caCert, 0644); err != nil {
