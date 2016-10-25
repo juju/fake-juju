@@ -290,30 +290,31 @@ func (br bootstrapResult) fakeJujuInfo() *processInfo {
 	}
 }
 
-// logsSymlink determines the source and target paths for a symlink to
-// the fake-juju logs file.  Such a symlink is relevant because the
-// fake-juju daemon may not know where the log file is meant to go.
-// It defaults to putting the log file in the default Juju config dir.
-// In that case, a symlink should be created from there to the user-
-// defined Juju config dir ($JUJU_DATA).
-func (br bootstrapResult) logsSymlink(target string) (string, string) {
+// logsSymlinkFilenames() determines the source and target paths for
+// a symlink to the fake-juju logs file.  Such a symlink is relevant
+// because the fake-juju daemon may not know where the log file is
+// meant to go. It defaults to putting the log file in the default Juju
+// config dir. In that case, a symlink should be created from there to
+// the user-defined Juju config dir ($JUJU_DATA).
+func (br bootstrapResult) logsSymlinkFilenames(targetLogsFile string) (source, target string) {
 	if os.Getenv("FAKE_JUJU_LOGS_DIR") != "" {
 		return "", ""
 	}
 
 	filenames := newFakeJujuFilenames("", "", br.cfgdir)
-	source := filenames.logsFile()
+	source = filenames.logsFile()
+	target = targetLogsFile
 	return source, target
 }
 
-// apply writes out the information from the bootstrap result to the
+// apply() writes out the information from the bootstrap result to the
 // various files identified by the provided filenames.
 func (br bootstrapResult) apply(filenames fakejujuFilenames, controllerName string) error {
 	if err := br.fakeJujuInfo().write(filenames.infoFile()); err != nil {
 		return err
 	}
 
-	logsSource, logsTarget := br.logsSymlink(filenames.logsFile())
+	logsSource, logsTarget := br.logsSymlinkFilenames(filenames.logsFile())
 	if logsSource != "" && logsTarget != "" {
 		if err := os.Symlink(logsSource, logsTarget); err != nil {
 			return err

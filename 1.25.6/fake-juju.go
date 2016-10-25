@@ -310,26 +310,26 @@ func (br bootstrapResult) fakeJujuInfo() *processInfo {
 	}
 }
 
-// logsSymlink determines the source and target paths for a symlink to
-// the fake-juju logs file.  Such a symlink is relevant because the
-// fake-juju daemon may not know where the log file is meant to go.
-// It defaults to putting the log file in the default Juju config dir.
-// In that case, a symlink should be created from there to the user-
-// defined Juju config dir ($JUJU_HOME).
-func (br bootstrapResult) logsSymlink(logsFile string) (source, target string) {
+// logsSymlinkFilenames() determines the source and target paths for
+// a symlink to the fake-juju logs file.  Such a symlink is relevant
+// because the fake-juju daemon may not know where the log file is
+// meant to go. It defaults to putting the log file in the default Juju
+// config dir. In that case, a symlink should be created from there to
+// the user-defined Juju config dir ($JUJU_HOME).
+func (br bootstrapResult) logsSymlinkFilenames(targetLogsFile string) (source, target string) {
 	if os.Getenv("FAKE_JUJU_LOGS_DIR") != "" || os.Getenv("FAKE_JUJU_DATA_DIR") != "" {
 		return "", ""
 	}
 
 	filenames := newFakeJujuFilenames("", "", br.cfgdir)
 	source = filenames.logsFile()
-	target = logsFile
+	target = targetLogsFile
 	return source, target
 }
 
-// jenvSymlink determines the source and target paths for a symlink to
-// the .jenv file for the identified environment.
-func (br bootstrapResult) jenvSymlink(jujuHome, envName string) (source, target string) {
+// jenvSymlinkFilenames() determines the source and target paths for
+// a symlink to the .jenv file for the identified environment.
+func (br bootstrapResult) jenvSymlinkFilenames(jujuHome, envName string) (source, target string) {
 	if jujuHome == "" || envName == "" {
 		return "", ""
 	}
@@ -339,21 +339,21 @@ func (br bootstrapResult) jenvSymlink(jujuHome, envName string) (source, target 
 	return source, target
 }
 
-// apply writes out the information from the bootstrap result to the
+// apply() writes out the information from the bootstrap result to the
 // various files identified by the provided filenames.
 func (br bootstrapResult) apply(filenames fakejujuFilenames, envName string) error {
 	if err := br.fakeJujuInfo().write(filenames.infoFile()); err != nil {
 		return err
 	}
 
-	logsSource, logsTarget := br.logsSymlink(filenames.logsFile())
+	logsSource, logsTarget := br.logsSymlinkFilenames(filenames.logsFile())
 	if logsSource != "" && logsTarget != "" {
 		if err := os.Symlink(logsSource, logsTarget); err != nil {
 			return err
 		}
 	}
 
-	jenvSource, jenvTarget := br.jenvSymlink(os.Getenv("JUJU_HOME"), envName)
+	jenvSource, jenvTarget := br.jenvSymlinkFilenames(os.Getenv("JUJU_HOME"), envName)
 	if jenvSource != "" && jenvTarget != "" {
 		if err := os.MkdirAll(filepath.Dir(jenvTarget), 0755); err != nil {
 			return err
