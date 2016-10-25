@@ -37,17 +37,19 @@ import (
 )
 
 func main() {
+	code := 0
 	if len(os.Args) > 1 {
-		code := 0
 		err := handleCommand(os.Args[1])
 		if err != nil {
 			fmt.Println(err.Error())
 			code = 1
 		}
-		os.Exit(code)
+	} else {
+		// This kicks off the daemon.  See FakeJujuSuite below.
+		t := &testing.T{}
+		coretesting.MgoTestPackage(t)
 	}
-	t := &testing.T{}
-	coretesting.MgoTestPackage(t)
+	os.Exit(code)
 }
 
 func handleCommand(command string) error {
@@ -178,6 +180,7 @@ func environmentNameAndConfig() (string, *config.Config, error) {
 	return envName, config, nil
 }
 
+// processInfo holds all the information that fake-juju uses internally.
 type processInfo struct {
 	Username     string
 	Password     string
@@ -209,6 +212,8 @@ func (info processInfo) write(infoPath string) error {
 	return nil
 }
 
+// fakejujuFilenames encapsulates the paths to all the directories and
+// files that are relevant to fake-juju.
 type fakejujuFilenames struct {
 	datadir string
 	logsdir string
@@ -243,22 +248,34 @@ func (fj fakejujuFilenames) ensureDirsExist() error {
 	return nil
 }
 
+// infoFile() returns the path to the file that fake-juju uses as
+// its persistent storage for internal data.
 func (fj fakejujuFilenames) infoFile() string {
 	return filepath.Join(fj.datadir, "fakejuju")
 }
 
+// logsFile() returns the path to the file where fake-juju writes
+// its logs.  Note that the normal Juju logs are not written here.
 func (fj fakejujuFilenames) logsFile() string {
 	return filepath.Join(fj.logsdir, "fake-juju.log")
 }
 
+// fifoFile() returns the path to the FIFO file used by fake-juju.
+// The FIFO is used by the fake-juju subcommands to interact with
+// the daemon.
 func (fj fakejujuFilenames) fifoFile() string {
 	return filepath.Join(fj.datadir, "fifo")
 }
 
+// caCertFile() returns the path to the file holding the CA certificate
+// used by the Juju API server.  fake-juju writes the cert there as a
+// convenience for users.  It is not actually used for anything.
 func (fj fakejujuFilenames) caCertFile() string {
 	return filepath.Join(fj.datadir, "cert.ca")
 }
 
+// bootstrapResult encapsulates all significant information that came
+// from bootstrapping an environment.
 type bootstrapResult struct {
 	dummyEnvName string
 	cfgdir       string
@@ -269,6 +286,7 @@ type bootstrapResult struct {
 	caCert       []byte
 }
 
+// apiInfo() composes the Juju API info corresponding to the result.
 func (br bootstrapResult) apiInfo() *api.Info {
 	return &api.Info{
 		Addrs:      br.addresses,
@@ -279,6 +297,8 @@ func (br bootstrapResult) apiInfo() *api.Info {
 	}
 }
 
+// fakeJujuInfo() composes, from the result, the set of information
+// that fake-juju should use internally.
 func (br bootstrapResult) fakeJujuInfo() *processInfo {
 	return &processInfo{
 		Username:     br.username,
@@ -290,26 +310,37 @@ func (br bootstrapResult) fakeJujuInfo() *processInfo {
 	}
 }
 
-func (br bootstrapResult) logsSymlink(target string) (string, string) {
+// logsSymlink determines the source and target paths for a symlink to
+// the fake-juju logs file.  Such a symlink is relevant because the
+// fake-juju daemon may not know where the log file is meant to go.
+// It defaults to putting the log file in the default Juju config dir.
+// In that case, a symlink should be created from there to the user-
+// defined Juju config dir ($JUJU_HOME).
+func (br bootstrapResult) logsSymlink(logsFile string) (source, target string) {
 	if os.Getenv("FAKE_JUJU_LOGS_DIR") != "" || os.Getenv("FAKE_JUJU_DATA_DIR") != "" {
 		return "", ""
 	}
 
 	filenames := newFakeJujuFilenames("", "", br.cfgdir)
-	source := filenames.logsFile()
+	source = filenames.logsFile()
+	target = logsFile
 	return source, target
 }
 
-func (br bootstrapResult) jenvSymlink(jujuHome, envName string) (string, string) {
+// jenvSymlink determines the source and target paths for a symlink to
+// the .jenv file for the identified environment.
+func (br bootstrapResult) jenvSymlink(jujuHome, envName string) (source, target string) {
 	if jujuHome == "" || envName == "" {
 		return "", ""
 	}
 
-	source := filepath.Join(br.cfgdir, "environments", br.dummyEnvName+".jenv")
-	target := filepath.Join(jujuHome, "environments", envName+".jenv")
+	source = filepath.Join(br.cfgdir, "environments", br.dummyEnvName+".jenv")
+	target = filepath.Join(jujuHome, "environments", envName+".jenv")
 	return source, target
 }
 
+// apply writes out the information from the bootstrap result to the
+// various files identified by the provided filenames.
 func (br bootstrapResult) apply(filenames fakejujuFilenames, envName string) error {
 	if err := br.fakeJujuInfo().write(filenames.infoFile()); err != nil {
 		return err
@@ -416,6 +447,10 @@ func readFailuresInfo() (map[string]bool, error) {
 	}
 	return failuresInfo, nil
 }
+
+//===================================================================
+// The fake-juju daemon (started by bootstrap) is found here.  It is
+// implemented as a test suite.
 
 type FakeJujuSuite struct {
 	jujutesting.JujuConnSuite
