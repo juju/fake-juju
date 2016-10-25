@@ -99,9 +99,17 @@ func bootstrap(filenames fakejujuFilenames) error {
 	if err := result.apply(filenames, controllerName); err != nil {
 		return err
 	}
-	apiInfo := result.apiInfo()
 
 	// Wait for the daemon to finish starting up.
+	if err := waitForBootstrapCompletion(result); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func waitForBootstrapCompletion(result *bootstrapResult) error {
+	apiInfo := result.apiInfo()
 	dialOpts := api.DialOpts{
 		DialAddressInterval: 50 * time.Millisecond,
 		Timeout:             5 * time.Second,
