@@ -165,6 +165,10 @@ func handleDestroyController(filenames fakejujuFilenames) error {
 		return err
 	}
 	filenames = newFakeJujuFilenames("", "", info.WorkDir)
+	return destroyController(filenames)
+}
+
+func destroyController(filenames fakejujuFilenames) error {
 	fd, err := os.OpenFile(filenames.fifoFile(), os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
