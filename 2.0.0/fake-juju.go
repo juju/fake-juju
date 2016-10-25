@@ -94,14 +94,23 @@ func handleBootstrap(filenames fakejujuFilenames) error {
 	// Get the internal info from the daemon and store it.
 	result, err := parseApiInfo(stdout)
 	if err != nil {
+		if err := destroyController(filenames); err != nil {
+			fmt.Printf("could not destroy controller when parsing bootstrap result failed: %v\n", err)
+		}
 		return err
 	}
 	if err := result.apply(filenames, controllerName); err != nil {
+		if err := destroyController(filenames); err != nil {
+			fmt.Printf("could not destroy controller when setup failed: %v\n", err)
+		}
 		return err
 	}
 
 	// Wait for the daemon to finish starting up.
 	if err := waitForBootstrapCompletion(result); err != nil {
+		if err := destroyController(filenames); err != nil {
+			fmt.Printf("could not destroy controller when waiting-for-ready failed: %v\n", err)
+		}
 		return err
 	}
 
