@@ -59,7 +59,7 @@ test: $(JUJU_VERSION)/$(JUJU_VERSION)
 else  ###########################################
 # for all versions
 
-JUJU1_VERSIONS = 1.24.7 1.25.6
+JUJU1_VERSIONS = 1.25.6
 JUJU2_VERSIONS = 2.0.0
 VERSIONS = $(JUJU1_VERSIONS) $(JUJU2_VERSIONS)
 BUILT_VERSIONS = $(foreach version,$(VERSIONS),$(version)/$(version))
