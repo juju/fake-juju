@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	gc "gopkg.in/check.v1"
 	"io"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/juju/juju/agent"
 	"github.com/juju/juju/api"
+	jujucmdcommon "github.com/juju/juju/cmd/juju/common"
 	"github.com/juju/juju/cmd/juju/controller"
 	"github.com/juju/juju/instance"
 	"github.com/juju/juju/juju/osenv"
@@ -76,15 +78,13 @@ func handleCommand(command string) error {
 }
 
 func handleBootstrap(filenames fakejujuFilenames) (returnedErr error) {
-	argc := len(os.Args)
-	if argc < 4 {
-		return errors.New(
-			"error: controller name and cloud name are required")
+	var args bootstrapArgs
+	if err := args.parse(); err != nil {
+		return err
 	}
 	if err := filenames.ensureDirsExist(); err != nil {
 		return err
 	}
-	controllerName := os.Args[argc-1]
 
 	// Start the fake-juju daemon.
 	command := exec.Command(os.Args[0])
@@ -148,6 +148,63 @@ type bootstrapArgs struct {
 	controllerName string
 	cloud          string
 	region         string
+}
+
+func (bsargs *bootstrapArgs) parse() error {
+	flags := flag.NewFlagSet("bootstrap", flag.ExitOnError)
+
+	var ignoredStr string
+	flags.StringVar(&ignoredStr, "constraints", "", "")
+	flags.StringVar(&ignoredStr, "bootstrap-constraints", "", "")
+	flags.StringVar(&ignoredStr, "bootstrap-series", "", "")
+	flags.StringVar(&ignoredStr, "bootstrap-image", "", "")
+	flags.StringVar(&ignoredStr, "metadata-source", "", "")
+	flags.StringVar(&ignoredStr, "to", "", "")
+	flags.StringVar(&ignoredStr, "agent-version", "", "")
+	flags.StringVar(&ignoredStr, "regions", "", "")
+
+	var ignoredBool bool
+	flags.BoolVar(&ignoredBool, "build-agent", false, "")
+	flags.BoolVar(&ignoredBool, "keep-broken", false, "")
+	flags.BoolVar(&ignoredBool, "auto-upgrade", false, "")
+	flags.BoolVar(&ignoredBool, "no-gui", false, "")
+	flags.BoolVar(&ignoredBool, "clouds", false, "")
+
+	flags.Var(&bsargs.config, "config", "")
+	flags.StringVar(&bsargs.credentialName, "credential", "", "")
+	flags.StringVar(&bsargs.hostedModelName, "d", "", "")
+	flags.StringVar(&bsargs.hostedModelName, "default-model", "", "")
+
+	flags.Parse(os.Args[2:])
+
+	args := flags.Args()
+	switch len(args) {
+	case 0:
+		return fmt.Errorf("expected at least one positional arg, got none")
+	case 1:
+		bsargs.cloud = args[0]
+	case 2:
+		bsargs.cloud = args[0]
+		bsargs.controllerName = args[1]
+	default:
+		return fmt.Errorf("expected at most two positional args, got %v", args)
+	}
+
+	if i := strings.IndexRune(bsargs.cloud, '/'); i > 0 {
+		bsargs.cloud, bsargs.region = bsargs.cloud[:i], bsargs.cloud[i+1:]
+	}
+	if bsargs.controllerName == "" {
+		bsargs.controllerName = bsargs.cloud
+		if bsargs.region == "" {
+			bsargs.controllerName += "-" + bsargs.region
+		}
+	}
+
+	if bsargs.hostedModelName == "" {
+		bsargs.hostedModelName = "default"
+	}
+
+	return nil
 }
 
 func waitForBootstrapCompletion(result *bootstrapResult) error {
