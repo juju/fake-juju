@@ -31,6 +31,7 @@ import (
 	coretesting "github.com/juju/juju/testing"
 	"github.com/juju/juju/testing/factory"
 	"github.com/juju/juju/version"
+	"github.com/juju/loggo"
 	"github.com/juju/utils"
 	semversion "github.com/juju/version"
 	corecharm "gopkg.in/juju/charmrepo.v2-unstable"
@@ -123,7 +124,7 @@ func handleBootstrap(filenames fakejujuFilenames) (returnedErr error) {
 		return err
 	}
 	if err := result.apply(filenames); err != nil {
-		whence = "setup"
+		whence = "setting up fake-juju files"
 		return err
 	}
 
@@ -285,6 +286,12 @@ func (fj fakejujuFilenames) infoFile() string {
 // its logs.  Note that the normal Juju logs are not written here.
 func (fj fakejujuFilenames) logsFile() string {
 	return filepath.Join(fj.logsdir, "fake-juju.log")
+}
+
+// jujudLogsFile() returns the path to the file where fake-juju writes
+// the jujud logs.
+func (fj fakejujuFilenames) jujudLogsFile() string {
+	return filepath.Join(fj.logsdir, "jujud.log")
 }
 
 // fifoFile() returns the path to the FIFO file used by fake-juju.
@@ -499,16 +506,22 @@ func readFailuresInfo() (map[string]bool, error) {
 type FakeJujuSuite struct {
 	jujutesting.JujuConnSuite
 
-	instanceCount  int
-	machineStarted map[string]bool
-	filenames      fakejujuFilenames
-	logFile        *os.File
+	instanceCount     int
+	machineStarted    map[string]bool
+	filenames         fakejujuFilenames
+	toCloseOnTearDown []io.Closer
 }
 
 var _ = gc.Suite(&FakeJujuSuite{})
 
 func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	var err error
+	c.Assert(os.Getenv(envDataDir), gc.Not(gc.Equals), "")
+	s.filenames = newFakeJujuFilenames("", "", "")
+	logFile, jujudLogFile := setUpLogging(c, s.filenames)
+	s.toCloseOnTearDown = append(s.toCloseOnTearDown, logFile, jujudLogFile)
+	tmpLog, _ := os.Create("/tmp/fakejuju.out")
+	tmpLog.Write([]byte(fmt.Sprintf("%#v\n", s.filenames)))
 	s.JujuConnSuite.SetUpTest(c)
 
 	ports := s.APIState.APIHostPorts()
@@ -565,29 +578,44 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	os.Setenv("PATH", binPath+":"+os.Getenv("PATH"))
 
-	s.filenames = newFakeJujuFilenames("", "", jujuHome)
+	// Once this FIFO is created, users can start sending commands.
+	// The actual handling doesn't start until TestStart() runs.
 	syscall.Mknod(s.filenames.fifoFile(), syscall.S_IFIFO|0666, 0)
-
-	// Logging
-	logPath := s.filenames.logsFile()
-	s.logFile, err = os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	c.Assert(err, gc.IsNil)
-
-	log.SetOutput(s.logFile)
-	log.Println("Started fake-juju at ", jujuHome)
 
 	// Send the info back to the bootstrap command.
 	// IMPORTANT: don't remove this logging because it's used by the
 	// bootstrap command.
 	fmt.Println(apiInfo.ModelTag.Id())
 	fmt.Println(jujuHome)
+
+	log.Println("Started fake-juju at ", jujuHome)
+}
+
+func setUpLogging(c *gc.C, filenames fakejujuFilenames) (*os.File, *os.File) {
+	c.Assert(filenames.logsdir, gc.Not(gc.Equals), "")
+
+	// fake-juju logging
+	logPath := filenames.logsFile()
+	logFile, err := os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	c.Assert(err, gc.IsNil)
+	log.SetOutput(logFile)
+
+	// jujud logging
+	jujudLogFile, err := os.Create(filenames.jujudLogsFile())
+	c.Assert(err, gc.IsNil)
+	err = loggo.RegisterWriter("jujud-logs", loggo.NewSimpleWriter(jujudLogFile, nil))
+	c.Assert(err, gc.IsNil)
+
+	return logFile, jujudLogFile
 }
 
 func (s *FakeJujuSuite) TearDownTest(c *gc.C) {
 	log.Println("Tearing down processes")
 	s.JujuConnSuite.TearDownTest(c)
-	log.Println("Closing log file")
-	s.logFile.Close()
+	log.Println("Closing log files")
+	for _, closer := range s.toCloseOnTearDown {
+		closer.Close()
+	}
 }
 
 func (s *FakeJujuSuite) TestStart(c *gc.C) {
