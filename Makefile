@@ -167,7 +167,8 @@ ci-test:
 		wget \
 		python3-pip \
 		golang-go \
-		golang-1.6
+		golang-1.6 \
+		python-txjuju
 	# See tests/jujuclient-archive/UPGRADE when a newer jujuclient version is needed.
 	sudo python3 -m pip install \
 		--ignore-installed \
