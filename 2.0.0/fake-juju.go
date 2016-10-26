@@ -395,8 +395,7 @@ func (br bootstrapResult) copyConfig(targetCfgDir, controllerName string) error 
 	return nil
 }
 
-// See github.com/juju/juju/blob/juju/testing/conn.go.
-const dummyControllerName = "kontroll"
+const dummyControllerName = jujutesting.ControllerName
 
 func parseApiInfo(stdout io.ReadCloser) (*bootstrapResult, error) {
 	buffer := bufio.NewReader(stdout)
@@ -503,10 +502,11 @@ type FakeJujuSuite struct {
 var _ = gc.Suite(&FakeJujuSuite{})
 
 func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
+	var err error
 	s.JujuConnSuite.SetUpTest(c)
 
 	ports := s.APIState.APIHostPorts()
-	err := s.State.SetAPIHostPorts(ports)
+	err = s.State.SetAPIHostPorts(ports)
 	c.Assert(err, gc.IsNil)
 
 	s.machineStarted = make(map[string]bool)
@@ -550,8 +550,6 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	apiInfo := s.APIInfo(c)
 	//fmt.Println(apiInfo.Addrs[0])
 	jujuHome := osenv.JujuXDGDataHome()
-	// IMPORTANT: don't remove this logging because it's used by the
-	// bootstrap command.
 
 	binPath := filepath.Join(jujuHome, "bin")
 	os.Mkdir(binPath, 0755)
@@ -573,6 +571,8 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	log.Println("Started fake-juju at ", jujuHome)
 
 	// Send the info back to the bootstrap command.
+	// IMPORTANT: don't remove this logging because it's used by the
+	// bootstrap command.
 	fmt.Println(apiInfo.ModelTag.Id())
 	fmt.Println(jujuHome)
 }
