@@ -393,7 +393,7 @@ def write_fakejuju_script(version, bindir, cfgdir, api_info):
 
 @contextmanager
 def tempdir():
-    cfgdir = tempfile.mkdtemp("fakejuju-test-")
+    cfgdir = tempfile.mkdtemp(prefix="fakejuju-test-")
     try:
         yield cfgdir
     finally:
