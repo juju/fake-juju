@@ -583,10 +583,7 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	syscall.Mknod(s.filenames.fifoFile(), syscall.S_IFIFO|0666, 0)
 
 	// Send the info back to the bootstrap command.
-	// IMPORTANT: don't remove this logging because it's used by the
-	// bootstrap command.
-	fmt.Println(apiInfo.ModelTag.Id())
-	fmt.Println(jujuHome)
+	reportInfo(apiInfo.ModelTag.Id(), jujuHome)
 
 	log.Println("Started fake-juju at ", jujuHome)
 }
@@ -607,6 +604,13 @@ func setUpLogging(c *gc.C, filenames fakejujuFilenames) (*os.File, *os.File) {
 	c.Assert(err, gc.IsNil)
 
 	return logFile, jujudLogFile
+}
+
+func reportInfo(uuid, jujuCfgDir string) {
+	// IMPORTANT: don't remove this logging because it's used by the
+	// bootstrap command.
+	fmt.Println(uuid)
+	fmt.Println(jujuCfgDir)
 }
 
 func (s *FakeJujuSuite) TearDownTest(c *gc.C) {
