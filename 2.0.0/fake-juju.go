@@ -422,6 +422,9 @@ func (br bootstrapResult) apply(filenames fakejujuFilenames) error {
 }
 
 func (br bootstrapResult) copyConfig(targetCfgDir, controllerName string) error {
+	if err := os.MkdirAll(targetCfgDir, 0755); err != nil {
+		return err
+	}
 	for _, name := range []string{"controllers.yaml", "models.yaml", "accounts.yaml"} {
 		source := filepath.Join(br.cfgdir, name)
 		target := filepath.Join(targetCfgDir, name)
