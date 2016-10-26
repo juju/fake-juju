@@ -1,3 +1,9 @@
+fake-juju (0.18-1) trusty; urgency=medium
+
+  * Add support for 2.0 final and add a Python library.
+
+ -- Eric Snow <eric.snow@canonical.com>  Mon, 24 Oct 2016 13:37:34 -0600
+
 fake-juju (0.17-1) trusty; urgency=medium
 
   * Add support for beta 6 and fix beta 2
