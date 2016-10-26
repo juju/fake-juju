@@ -38,6 +38,12 @@ import (
 	goyaml "gopkg.in/yaml.v1"
 )
 
+const (
+	envDataDir      = "FAKE_JUJU_DATA_DIR"
+	envLogsDir      = "FAKE_JUJU_LOGS_DIR"
+	envFailuresFile = "FAKE_JUJU_FAILURES"
+)
+
 func main() {
 	code := 0
 	if len(os.Args) > 1 {
@@ -242,7 +248,7 @@ type fakejujuFilenames struct {
 
 func newFakeJujuFilenames(datadir, logsdir, jujucfgdir string) fakejujuFilenames {
 	if datadir == "" {
-		datadir = os.Getenv("FAKE_JUJU_DATA_DIR")
+		datadir = os.Getenv(envDataDir)
 		if datadir == "" {
 			if jujucfgdir == "" {
 				jujucfgdir = os.Getenv("JUJU_DATA")
@@ -251,7 +257,7 @@ func newFakeJujuFilenames(datadir, logsdir, jujucfgdir string) fakejujuFilenames
 		}
 	}
 	if logsdir == "" {
-		logsdir = os.Getenv("FAKE_JUJU_LOGS_DIR")
+		logsdir = os.Getenv(envLogsDir)
 		if logsdir == "" {
 			logsdir = datadir
 		}
@@ -336,7 +342,7 @@ func (br bootstrapResult) fakeJujuInfo() *processInfo {
 // config dir. In that case, a symlink should be created from there to
 // the user-defined Juju config dir ($JUJU_DATA).
 func (br bootstrapResult) logsSymlinkFilenames(targetLogsFile string) (source, target string) {
-	if os.Getenv("FAKE_JUJU_LOGS_DIR") != "" {
+	if os.Getenv(envLogsDir) != "" {
 		return "", ""
 	}
 
@@ -455,9 +461,9 @@ func updateBootstrapResult(result *bootstrapResult) error {
 // entity transition to an error state.
 func readFailuresInfo() (map[string]bool, error) {
 	log.Println("Checking for forced failures")
-	failuresPath := os.Getenv("FAKE_JUJU_FAILURES")
+	failuresPath := os.Getenv(envFailuresFile)
 	if failuresPath == "" {
-		log.Println("No FAKE_JUJU_FAILURES env variable set")
+		log.Printf("No %s env variable set\n", envFailuresFile)
 	}
 	log.Println("Reading failures file", failuresPath)
 	failuresInfo := map[string]bool{}
