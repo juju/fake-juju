@@ -164,6 +164,7 @@ func (bsargs *bootstrapArgs) parse() error {
 	flags.StringVar(&ignoredStr, "regions", "", "")
 
 	var ignoredBool bool
+	flags.BoolVar(&ignoredBool, "v", false, "")
 	flags.BoolVar(&ignoredBool, "build-agent", false, "")
 	flags.BoolVar(&ignoredBool, "keep-broken", false, "")
 	flags.BoolVar(&ignoredBool, "auto-upgrade", false, "")
