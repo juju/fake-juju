@@ -93,6 +93,7 @@ func handleBootstrap(filenames fakejujuFilenames) (returnedErr error) {
 		command.Env, "ADMIN_PASSWORD="+"pwd")
 	defaultSeries := "trusty"
 	command.Env = append(command.Env, "DEFAULT_SERIES="+defaultSeries)
+	command.Env = append(command.Env, envDataDir+"="+filenames.datadir)
 	stdout, err := command.StdoutPipe()
 	if err != nil {
 		return err
@@ -115,7 +116,7 @@ func handleBootstrap(filenames fakejujuFilenames) (returnedErr error) {
 		whence = "parsing bootstrap result"
 		return err
 	}
-	if err := result.copyConfig(os.Getenv("JUJU_DATA"), controllerName); err != nil {
+	if err := result.copyConfig(os.Getenv("JUJU_DATA"), args.controllerName); err != nil {
 		whence = "copying config"
 		return err
 	}
@@ -135,6 +136,18 @@ func handleBootstrap(filenames fakejujuFilenames) (returnedErr error) {
 	}
 
 	return nil
+}
+
+// bootstrapArgs is an adaptation of bootstrapCommand from
+// github.com/juju/juju/cmd/juju/commands/bootstrap.go.
+type bootstrapArgs struct {
+	config          jujucmdcommon.ConfigFlag
+	hostedModelName string
+	credentialName  string
+
+	controllerName string
+	cloud          string
+	region         string
 }
 
 func waitForBootstrapCompletion(result *bootstrapResult) error {
@@ -189,11 +202,6 @@ func handleAPIInfo(filenames fakejujuFilenames) error {
 }
 
 func handleDestroyController(filenames fakejujuFilenames) error {
-	info, err := readProcessInfo(filenames)
-	if err != nil {
-		return err
-	}
-	filenames = newFakeJujuFilenames("", "", info.WorkDir)
 	return destroyController(filenames)
 }
 
@@ -342,35 +350,11 @@ func (br bootstrapResult) fakeJujuInfo() *processInfo {
 	}
 }
 
-// logsSymlinkFilenames() determines the source and target paths for
-// a symlink to the fake-juju logs file.  Such a symlink is relevant
-// because the fake-juju daemon may not know where the log file is
-// meant to go. It defaults to putting the log file in the default Juju
-// config dir. In that case, a symlink should be created from there to
-// the user-defined Juju config dir ($JUJU_DATA).
-func (br bootstrapResult) logsSymlinkFilenames(targetLogsFile string) (source, target string) {
-	if os.Getenv(envLogsDir) != "" {
-		return "", ""
-	}
-
-	filenames := newFakeJujuFilenames("", "", br.cfgdir)
-	source = filenames.logsFile()
-	target = targetLogsFile
-	return source, target
-}
-
 // apply() writes out the information from the bootstrap result to the
 // various files identified by the provided filenames.
 func (br bootstrapResult) apply(filenames fakejujuFilenames) error {
 	if err := br.fakeJujuInfo().write(filenames.infoFile()); err != nil {
 		return err
-	}
-
-	logsSource, logsTarget := br.logsSymlinkFilenames(filenames.logsFile())
-	if logsSource != "" && logsTarget != "" {
-		if err := os.Symlink(logsSource, logsTarget); err != nil {
-			return err
-		}
 	}
 
 	if err := ioutil.WriteFile(filenames.caCertFile(), br.caCert, 0644); err != nil {
@@ -520,8 +504,6 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	s.filenames = newFakeJujuFilenames("", "", "")
 	logFile, jujudLogFile := setUpLogging(c, s.filenames)
 	s.toCloseOnTearDown = append(s.toCloseOnTearDown, logFile, jujudLogFile)
-	tmpLog, _ := os.Create("/tmp/fakejuju.out")
-	tmpLog.Write([]byte(fmt.Sprintf("%#v\n", s.filenames)))
 	s.JujuConnSuite.SetUpTest(c)
 
 	ports := s.APIState.APIHostPorts()
