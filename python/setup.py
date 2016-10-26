@@ -18,7 +18,7 @@ EMAIL = 'juju@lists.ubuntu.com'
 PROJECT_URL = 'https://launchpad.net/fake-juju'
 LICENSE = 'LGPLv3'
 
-with open(os.path.join(basedir, 'README.md')) as readme_file:
+with open(os.path.join(basedir, 'README.rst')) as readme_file:
     DESCRIPTION = readme_file.read()
 
 # dymanically generated data
@@ -42,11 +42,11 @@ for path, dirs, files in os.walk(package_name):
 
 # dependencies
 
-DEPS = ['yaml',
-        # for testing
-        'txjuju',
-        'fixtures',
+DEPS = ['fixtures',
         'testtools',
+        'txjuju',
+        'twisted',
+        'yaml',
         ]
 
 
