@@ -548,6 +548,19 @@ func (s *FakeJujuSuite) TestStart(c *gc.C) {
 			log.Println("Failed to open commands FIFO")
 		}
 		c.Assert(err, gc.IsNil)
+		defer func() {
+			if err := fd.Close(); err != nil {
+				c.Logf("failed closing FIFO file: %s", err)
+			}
+			// Mark the controller as destroyed by renaming some files.
+			if err := os.Rename(fifoPath, fifoPath+".destroyed"); err != nil {
+				c.Logf("failed renaming FIFO file: %s", err)
+			}
+			infofile := s.filenames.infoFile()
+			if err := os.Rename(infofile, infofile+".destroyed"); err != nil {
+				c.Logf("failed renaming info file: %s", err)
+			}
+		}()
 		scanner := bufio.NewScanner(fd)
 		log.Println("Listen for commands on FIFO", fifoPath)
 		scanner.Scan()

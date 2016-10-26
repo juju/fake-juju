@@ -305,12 +305,8 @@ class FakeJujuTests(unittest.TestCase):
                 version, bindir, datadir, cfgdir, expected)
             fakejuju = FakeJuju.from_version(version, cfgdir, bindir=bindir)
 
-            # Make the calls.
             cli, api_info = fakejuju.bootstrap("spam", cfgdir, "secret")
-            cli.destroy_controller()
 
-            with open(logfilename) as logfile:
-                calls = [line.strip() for line in logfile]
             files = []
             files.extend(os.path.join(os.path.basename(datadir), name)
                          for name in os.listdir(datadir))
@@ -318,6 +314,10 @@ class FakeJujuTests(unittest.TestCase):
                          for name in os.listdir(cfgdir))
             with open(os.path.join(cfgdir, "environments.yaml")) as envfile:
                 data = envfile.read()
+
+            cli.destroy_controller()
+            with open(logfilename) as logfile:
+                calls = [line.strip() for line in logfile]
 
         self.maxDiff = None
         self.assertEqual(api_info, {
@@ -351,6 +351,31 @@ class FakeJujuTests(unittest.TestCase):
                     },
                 },
             })
+
+    def test_is_bootstrapped_true(self):
+        """FakeJuju.is_bootstrapped() returns True if the fifo file exists."""
+        with tempdir() as datadir:
+            fakejuju = FakeJuju.from_version("1.25.6", datadir)
+            with open(fakejuju.fifo, "w"):
+                pass
+            result = fakejuju.is_bootstrapped()
+
+        self.assertTrue(result)
+
+    def test_is_bootstrapped_false(self):
+        """FakeJuju.is_bootstrapped() returns False if the fifo is gone."""
+        with tempdir() as datadir:
+            fakejuju = FakeJuju.from_version("1.25.6", datadir)
+            result = fakejuju.is_bootstrapped()
+
+        self.assertFalse(result)
+
+    def test_is_bootstrapped_datadir_missing(self):
+        """FakeJuju.is_bootstrapped() returns False if the data dir is gone."""
+        fakejuju = FakeJuju.from_version("1.25.6", "/tmp/fakejuju-no-exist")
+        result = fakejuju.is_bootstrapped()
+
+        self.assertFalse(result)
 
 
 FAKE_JUJU_SCRIPT = """\
