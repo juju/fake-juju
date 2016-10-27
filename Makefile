@@ -163,6 +163,7 @@ JUJUCLIENT_REQ = $(JUJUCLIENT_DOWNLOADS)/requirements
 
 .PHONY: ci-test
 ci-test:
+	sudo add-apt-repository -y --update ppa:landscape/txjuju-daily
 	sudo apt-get -y install --force-yes \
 		wget \
 		python3-pip \
@@ -172,7 +173,7 @@ ci-test:
 	# See tests/jujuclient-archive/UPGRADE when a newer jujuclient version is needed.
 	sudo python3 -m pip install \
 		--ignore-installed \
-        --no-cache-dir \
+		--no-cache-dir \
 		--no-index \
 		--find-links $(JUJUCLIENT_DOWNLOADS) \
 		--requirement $(JUJUCLIENT_REQ)
