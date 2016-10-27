@@ -560,15 +560,20 @@ type FakeJujuSuite struct {
 var _ = gc.Suite(&FakeJujuSuite{})
 
 func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
-	var err error
-	c.Assert(os.Getenv(envDataDir), gc.Not(gc.Equals), "")
-	s.filenames = newFakeJujuFilenames("", "", "")
-	logFile, jujudLogFile := setUpLogging(c, s.filenames)
-	s.toCloseOnTearDown = append(s.toCloseOnTearDown, logFile, jujudLogFile)
 	s.JujuConnSuite.SetUpTest(c)
 
+	c.Assert(os.Getenv(envDataDir), gc.Not(gc.Equals), "")
+	s.filenames = newFakeJujuFilenames("", "", "")
+	// Note that LoggingSuite.SetUpTest (github.com/juju/testing/log.go),
+	// called via s.JujuConnSuite.SetUpTest(), calls loggo.ResetLogging().
+	// So we cannot set up logging before then, since any writer we
+	// register will get removed.  Consequently we lose any logs that get
+	// generated in the SetUpTest() call.
+	logFile, jujudLogFile := setUpLogging(c, s.filenames)
+	s.toCloseOnTearDown = append(s.toCloseOnTearDown, logFile, jujudLogFile)
+
 	ports := s.APIState.APIHostPorts()
-	err = s.State.SetAPIHostPorts(ports)
+	err := s.State.SetAPIHostPorts(ports)
 	c.Assert(err, gc.IsNil)
 
 	s.machineStarted = make(map[string]bool)
@@ -641,10 +646,13 @@ func setUpLogging(c *gc.C, filenames fakejujuFilenames) (*os.File, *os.File) {
 	log.SetOutput(logFile)
 
 	// jujud logging
-	jujudLogFile, err := os.Create(filenames.jujudLogsFile())
+	logPath = filenames.jujudLogsFile()
+	jujudLogFile, err := os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	c.Assert(err, gc.IsNil)
-	err = loggo.RegisterWriter("jujud-logs", loggo.NewSimpleWriter(jujudLogFile, nil))
+	err = loggo.RegisterWriter("fake-juju-jujud-logs", loggo.NewSimpleWriter(jujudLogFile, nil))
 	c.Assert(err, gc.IsNil)
+	logger := loggo.GetLogger("fake-juju")
+	logger.Infof("--- starting logging ---")
 
 	return logFile, jujudLogFile
 }
