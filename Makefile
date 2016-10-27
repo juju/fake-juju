@@ -128,7 +128,7 @@ py-build: $(PYTHON_LIB_SOURCE_TARBALL)
 .PHONY: py-install
 py-install: py-build
 	if [ ! "$(SKIP_PYTHON_LIB)" ]; then \
-		mkdir -p $(PYTHON_INSTALL_DIR); \
+		mkdir -p $(PYTHON_INSTALLDIR); \
 		cd python; \
 		$(PYTHON) setup.py install $(PYTHON_INSTALL_OPTION); \
 	fi
