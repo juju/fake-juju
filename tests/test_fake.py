@@ -100,7 +100,7 @@ class Juju2FakeTest(_JujuFakeTest, unittest.TestCase):
 
     def bootstrap(self, name, type, env):
         """Return the API endpoint after bootstrapping the controller."""
-        args = [JUJU_FAKE, "bootstrap", "--no-gui", name, type]
+        args = [JUJU_FAKE, "bootstrap", "--no-gui", type, name]
         subprocess.check_call(args, env=env)
 
         args = [JUJU_FAKE, "show-controller", "--format", "json",
