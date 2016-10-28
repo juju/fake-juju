@@ -31,9 +31,14 @@ import (
 	coretesting "github.com/juju/juju/testing"
 	"github.com/juju/juju/testing/factory"
 	"github.com/juju/juju/version"
+	"github.com/juju/loggo"
 	"github.com/juju/names"
 	corecharm "gopkg.in/juju/charm.v5/charmrepo"
 	goyaml "gopkg.in/yaml.v1"
+)
+
+const (
+	envDataDir = "FAKE_JUJU_DATA_DIR"
 )
 
 func main() {
@@ -69,7 +74,7 @@ func handleCommand(command string) error {
 	return errors.New("command not found")
 }
 
-func bootstrap(filenames fakejujuFilenames) error {
+func bootstrap(filenames fakejujuFilenames) (returnedErr error) {
 	if err := filenames.ensureDirsExist(); err != nil {
 		return err
 	}
@@ -84,14 +89,26 @@ func bootstrap(filenames fakejujuFilenames) error {
 	command.Env = append(command.Env, "ADMIN_PASSWORD="+password)
 	defaultSeries, _ := config.DefaultSeries()
 	command.Env = append(command.Env, "DEFAULT_SERIES="+defaultSeries)
+	command.Env = append(command.Env, envDataDir+"="+filenames.datadir)
 	stdout, err := command.StdoutPipe()
 	if err != nil {
 		return err
 	}
 	command.Start()
 
+	var whence string
+	defer func() {
+		if returnedErr != nil {
+			if err := destroyEnvironment(filenames); err != nil {
+				fmt.Printf("could not destroy environment when %s failed: %v\n", whence, err)
+			}
+			returnedErr = fmt.Errorf("bootstrap failed while %s: %v", whence, returnedErr)
+		}
+	}()
+
 	result, err := parseApiInfo(stdout)
 	if err != nil {
+		whence = "parsing bootstrap result"
 		return err
 	}
 	// Get the API info before changing it.  The new values might
@@ -103,9 +120,11 @@ func bootstrap(filenames fakejujuFilenames) error {
 		result.password = password
 	}
 	if err := result.apply(filenames, envName); err != nil {
+		whence = "setting up fake-juju files"
 		return err
 	}
 
+	whence = "waiting-for-ready"
 	dialOpts := api.DialOpts{
 		DialAddressInterval: 50 * time.Millisecond,
 		Timeout:             5 * time.Second,
@@ -154,11 +173,6 @@ func apiInfo(filenames fakejujuFilenames) error {
 }
 
 func destroyEnvironment(filenames fakejujuFilenames) error {
-	info, err := readProcessInfo(filenames)
-	if err != nil {
-		return err
-	}
-	filenames = newFakeJujuFilenames("", "", info.WorkDir)
 	fd, err := os.OpenFile(filenames.fifoFile(), os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
@@ -228,7 +242,7 @@ type fakejujuFilenames struct {
 
 func newFakeJujuFilenames(datadir, logsdir, jujucfgdir string) fakejujuFilenames {
 	if datadir == "" {
-		datadir = os.Getenv("FAKE_JUJU_DATA_DIR")
+		datadir = os.Getenv(envDataDir)
 		if datadir == "" {
 			if jujucfgdir == "" {
 				jujucfgdir = os.Getenv("JUJU_HOME")
@@ -265,6 +279,12 @@ func (fj fakejujuFilenames) infoFile() string {
 // its logs.  Note that the normal Juju logs are not written here.
 func (fj fakejujuFilenames) logsFile() string {
 	return filepath.Join(fj.logsdir, "fake-juju.log")
+}
+
+// jujudLogsFile() returns the path to the file where fake-juju writes
+// the jujud logs.
+func (fj fakejujuFilenames) jujudLogsFile() string {
+	return filepath.Join(fj.logsdir, "jujud.log")
 }
 
 // fifoFile() returns the path to the FIFO file used by fake-juju.
@@ -317,23 +337,6 @@ func (br bootstrapResult) fakeJujuInfo() *processInfo {
 	}
 }
 
-// logsSymlinkFilenames() determines the source and target paths for
-// a symlink to the fake-juju logs file.  Such a symlink is relevant
-// because the fake-juju daemon may not know where the log file is
-// meant to go. It defaults to putting the log file in the default Juju
-// config dir. In that case, a symlink should be created from there to
-// the user-defined Juju config dir ($JUJU_HOME).
-func (br bootstrapResult) logsSymlinkFilenames(targetLogsFile string) (source, target string) {
-	if os.Getenv("FAKE_JUJU_LOGS_DIR") != "" || os.Getenv("FAKE_JUJU_DATA_DIR") != "" {
-		return "", ""
-	}
-
-	filenames := newFakeJujuFilenames("", "", br.cfgdir)
-	source = filenames.logsFile()
-	target = targetLogsFile
-	return source, target
-}
-
 // jenvSymlinkFilenames() determines the source and target paths for
 // a symlink to the .jenv file for the identified environment.
 func (br bootstrapResult) jenvSymlinkFilenames(jujuHome, envName string) (source, target string) {
@@ -351,13 +354,6 @@ func (br bootstrapResult) jenvSymlinkFilenames(jujuHome, envName string) (source
 func (br bootstrapResult) apply(filenames fakejujuFilenames, envName string) error {
 	if err := br.fakeJujuInfo().write(filenames.infoFile()); err != nil {
 		return err
-	}
-
-	logsSource, logsTarget := br.logsSymlinkFilenames(filenames.logsFile())
-	if logsSource != "" && logsTarget != "" {
-		if err := os.Symlink(logsSource, logsTarget); err != nil {
-			return err
-		}
 	}
 
 	jenvSource, jenvTarget := br.jenvSymlinkFilenames(os.Getenv("JUJU_HOME"), envName)
@@ -462,10 +458,10 @@ func readFailuresInfo() (map[string]bool, error) {
 type FakeJujuSuite struct {
 	jujutesting.JujuConnSuite
 
-	instanceCount  int
-	machineStarted map[string]bool
-	filenames      fakejujuFilenames
-	logFile        *os.File
+	instanceCount     int
+	machineStarted    map[string]bool
+	filenames         fakejujuFilenames
+	toCloseOnTearDown []io.Closer
 }
 
 var _ = gc.Suite(&FakeJujuSuite{})
@@ -473,6 +469,16 @@ var _ = gc.Suite(&FakeJujuSuite{})
 func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	var CommandOutput = (*exec.Cmd).CombinedOutput
 	s.JujuConnSuite.SetUpTest(c)
+
+	c.Assert(os.Getenv(envDataDir), gc.Not(gc.Equals), "")
+	s.filenames = newFakeJujuFilenames("", "", "")
+	// Note that LoggingSuite.SetUpTest (github.com/juju/testing/log.go),
+	// called via s.JujuConnSuite.SetUpTest(), calls loggo.ResetLogging().
+	// So we cannot set up logging before then, since any writer we
+	// register will get removed.  Consequently we lose any logs that get
+	// generated in the SetUpTest() call.
+	logFile, jujudLogFile := setUpLogging(c, s.filenames)
+	s.toCloseOnTearDown = append(s.toCloseOnTearDown, logFile, jujudLogFile)
 
 	ports := s.APIState.APIHostPorts()
 	ports[0][0].NetworkName = "dummy-provider-network"
@@ -517,10 +523,6 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 
 	apiInfo := s.APIInfo(c)
 	jujuHome := osenv.JujuHome()
-	// IMPORTANT: don't remove this logging because it's used by the
-	// bootstrap command.
-	fmt.Println(apiInfo.EnvironTag.Id())
-	fmt.Println(jujuHome)
 
 	binPath := filepath.Join(jujuHome, "bin")
 	os.Mkdir(binPath, 0755)
@@ -530,27 +532,55 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	os.Setenv("PATH", binPath+":"+os.Getenv("PATH"))
 
-	s.filenames = newFakeJujuFilenames("", "", jujuHome)
+	// Once this FIFO is created, users can start sending commands.
+	// The actual handling doesn't start until TestStart() runs.
 	syscall.Mknod(s.filenames.fifoFile(), syscall.S_IFIFO|0666, 0)
 
-	// Logging
-	logPath := s.filenames.logsFile()
-	s.logFile, err = os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	c.Assert(err, gc.IsNil)
+	// Send the info back to the bootstrap command.
+	reportInfo(apiInfo.EnvironTag.Id(), jujuHome)
 
 	dpkgCmd := exec.Command(
 		"dpkg-query", "--showformat='${Version}'", "--show", "fake-juju")
 	out, err := CommandOutput(dpkgCmd)
-	log.SetOutput(s.logFile)
 	fakeJujuDebVersion := strings.Trim(string(out), "'")
 	log.Printf("Started fake-juju-%s for %s\nJUJU_HOME=%s", fakeJujuDebVersion, version.Current, jujuHome)
+}
+
+func setUpLogging(c *gc.C, filenames fakejujuFilenames) (*os.File, *os.File) {
+	c.Assert(filenames.logsdir, gc.Not(gc.Equals), "")
+
+	// fake-juju logging
+	logPath := filenames.logsFile()
+	logFile, err := os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	c.Assert(err, gc.IsNil)
+	log.SetOutput(logFile)
+
+	// jujud logging
+	logPath = filenames.jujudLogsFile()
+	jujudLogFile, err := os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	c.Assert(err, gc.IsNil)
+	err = loggo.RegisterWriter("fake-juju-jujud-logs", loggo.NewSimpleWriter(jujudLogFile, &loggo.DefaultFormatter{}), loggo.TRACE)
+	c.Assert(err, gc.IsNil)
+	logger := loggo.GetLogger("fake-juju")
+	logger.Infof("--- starting logging ---")
+
+	return logFile, jujudLogFile
+}
+
+func reportInfo(uuid, jujuCfgDir string) {
+	// IMPORTANT: don't remove this logging because it's used by the
+	// bootstrap command.
+	fmt.Println(uuid)
+	fmt.Println(jujuCfgDir)
 }
 
 func (s *FakeJujuSuite) TearDownTest(c *gc.C) {
 	log.Println("Tearing down processes")
 	s.JujuConnSuite.TearDownTest(c)
-	log.Println("Closing log file")
-	s.logFile.Close()
+	log.Println("Closing log files")
+	for _, closer := range s.toCloseOnTearDown {
+		closer.Close()
+	}
 }
 
 func (s *FakeJujuSuite) TestStart(c *gc.C) {
