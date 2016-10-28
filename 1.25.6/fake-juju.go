@@ -33,6 +33,7 @@ import (
 	"github.com/juju/juju/version"
 	"github.com/juju/loggo"
 	"github.com/juju/names"
+	"github.com/juju/utils"
 	corecharm "gopkg.in/juju/charm.v5/charmrepo"
 	goyaml "gopkg.in/yaml.v1"
 )
@@ -384,12 +385,22 @@ func parseApiInfo(stdout io.ReadCloser) (*bootstrapResult, error) {
 		return nil, err
 	}
 	uuid := string(line)
+	if !utils.IsValidUUIDString(uuid) {
+		data, _ := ioutil.ReadAll(stdout)
+		return nil, fmt.Errorf("%s\n%s", line, data)
+	}
 
 	line, _, err = buffer.ReadLine()
 	if err != nil {
 		return nil, err
 	}
 	workDir := string(line)
+
+	result := &bootstrapResult{
+		dummyEnvName: dummyEnvName,
+		cfgdir:       workDir,
+		uuid:         uuid,
+	}
 
 	store, err := configstore.NewDisk(workDir)
 	if err != nil {
@@ -399,18 +410,13 @@ func parseApiInfo(stdout io.ReadCloser) (*bootstrapResult, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	credentials := info.APICredentials()
 	endpoint := info.APIEndpoint()
-	result := &bootstrapResult{
-		dummyEnvName: dummyEnvName,
-		cfgdir:       workDir,
-		uuid:         uuid,
-		username:     credentials.User,
-		password:     credentials.Password,
-		addresses:    endpoint.Addresses,
-		caCert:       []byte(endpoint.CACert),
-	}
+	result.username = credentials.User
+	result.password = credentials.Password
+	result.addresses = endpoint.Addresses
+	result.caCert = []byte(endpoint.CACert)
+
 	return result, nil
 }
 

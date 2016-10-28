@@ -37,7 +37,7 @@ class _JujuFakeTest:
         super(_JujuFakeTest, self).setUp()
 
         self.env = os.environ.copy()
-        self.juju_home = cfgdir = tempfile.mkdtemp()
+        self.juju_home = cfgdir = tempfile.mkdtemp(prefix="fake-juju-test-")
         _jujuclient.prepare("dummy", "dummy", cfgdir, self.env, JUJU_VERSION)
 
         endpoint, uuid, password = self.bootstrap("dummy", "dummy", self.env)
