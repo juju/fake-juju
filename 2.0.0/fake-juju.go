@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	gc "gopkg.in/check.v1"
 	"io"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/juju/juju/agent"
 	"github.com/juju/juju/api"
+	jujucmdcommon "github.com/juju/juju/cmd/juju/common"
 	"github.com/juju/juju/cmd/juju/controller"
 	"github.com/juju/juju/instance"
 	"github.com/juju/juju/juju/osenv"
@@ -31,10 +33,18 @@ import (
 	coretesting "github.com/juju/juju/testing"
 	"github.com/juju/juju/testing/factory"
 	"github.com/juju/juju/version"
+	"github.com/juju/loggo"
+	"github.com/juju/utils"
 	semversion "github.com/juju/version"
 	corecharm "gopkg.in/juju/charmrepo.v2-unstable"
 	"gopkg.in/juju/names.v2"
 	goyaml "gopkg.in/yaml.v1"
+)
+
+const (
+	envDataDir      = "FAKE_JUJU_DATA_DIR"
+	envLogsDir      = "FAKE_JUJU_LOGS_DIR"
+	envFailuresFile = "FAKE_JUJU_FAILURES"
 )
 
 func main() {
@@ -56,49 +66,150 @@ func main() {
 func handleCommand(command string) error {
 	filenames := newFakeJujuFilenames("", "", "")
 	if command == "bootstrap" {
-		return bootstrap(filenames)
+		return handleBootstrap(filenames)
 	}
 	if command == "show-controller" {
-		return apiInfo(filenames)
+		return handleAPIInfo(filenames)
 	}
 	if command == "destroy-controller" {
-		return destroyController(filenames)
+		return handleDestroyController(filenames)
 	}
 	return errors.New("command not found")
 }
 
-func bootstrap(filenames fakejujuFilenames) error {
-	argc := len(os.Args)
-	if argc < 4 {
-		return errors.New(
-			"error: controller name and cloud name are required")
+func handleBootstrap(filenames fakejujuFilenames) (returnedErr error) {
+	var args bootstrapArgs
+	if err := args.parse(); err != nil {
+		return err
 	}
 	if err := filenames.ensureDirsExist(); err != nil {
 		return err
 	}
-	// XXX Swap the 2 args for juju-2.0-final.
-	controllerName := os.Args[argc-2]
+
+	// Start the fake-juju daemon.
 	command := exec.Command(os.Args[0])
 	command.Env = os.Environ()
 	command.Env = append(
 		command.Env, "ADMIN_PASSWORD="+"pwd")
 	defaultSeries := "trusty"
 	command.Env = append(command.Env, "DEFAULT_SERIES="+defaultSeries)
+	command.Env = append(command.Env, envDataDir+"="+filenames.datadir)
 	stdout, err := command.StdoutPipe()
 	if err != nil {
 		return err
 	}
 	command.Start()
 
+	var whence string
+	defer func() {
+		if returnedErr != nil {
+			if err := destroyController(filenames); err != nil {
+				fmt.Printf("could not destroy controller when %s failed: %v\n", whence, err)
+			}
+			returnedErr = fmt.Errorf("bootstrap failed while %s: %v", whence, returnedErr)
+		}
+	}()
+
+	// Get the internal info from the daemon and store it.
 	result, err := parseApiInfo(stdout)
 	if err != nil {
+		whence = "parsing bootstrap result"
 		return err
 	}
-	if err := result.apply(filenames, controllerName); err != nil {
+	if err := result.copyConfig(os.Getenv("JUJU_DATA"), args.controllerName); err != nil {
+		whence = "copying config"
 		return err
 	}
-	apiInfo := result.apiInfo()
+	if err := updateBootstrapResult(result); err != nil {
+		whence = "updating bootstrap result"
+		return err
+	}
+	if err := result.apply(filenames); err != nil {
+		whence = "setting up fake-juju files"
+		return err
+	}
 
+	// Wait for the daemon to finish starting up.
+	if err := waitForBootstrapCompletion(result); err != nil {
+		whence = "waiting-for-ready"
+		return err
+	}
+
+	return nil
+}
+
+// bootstrapArgs is an adaptation of bootstrapCommand from
+// github.com/juju/juju/cmd/juju/commands/bootstrap.go.
+type bootstrapArgs struct {
+	config          jujucmdcommon.ConfigFlag
+	hostedModelName string
+	credentialName  string
+
+	controllerName string
+	cloud          string
+	region         string
+}
+
+func (bsargs *bootstrapArgs) parse() error {
+	flags := flag.NewFlagSet("bootstrap", flag.ExitOnError)
+
+	var ignoredStr string
+	flags.StringVar(&ignoredStr, "constraints", "", "")
+	flags.StringVar(&ignoredStr, "bootstrap-constraints", "", "")
+	flags.StringVar(&ignoredStr, "bootstrap-series", "", "")
+	flags.StringVar(&ignoredStr, "bootstrap-image", "", "")
+	flags.StringVar(&ignoredStr, "metadata-source", "", "")
+	flags.StringVar(&ignoredStr, "to", "", "")
+	flags.StringVar(&ignoredStr, "agent-version", "", "")
+	flags.StringVar(&ignoredStr, "regions", "", "")
+
+	var ignoredBool bool
+	flags.BoolVar(&ignoredBool, "v", false, "")
+	flags.BoolVar(&ignoredBool, "build-agent", false, "")
+	flags.BoolVar(&ignoredBool, "keep-broken", false, "")
+	flags.BoolVar(&ignoredBool, "auto-upgrade", false, "")
+	flags.BoolVar(&ignoredBool, "no-gui", false, "")
+	flags.BoolVar(&ignoredBool, "clouds", false, "")
+
+	flags.Var(&bsargs.config, "config", "")
+	flags.StringVar(&bsargs.credentialName, "credential", "", "")
+	flags.StringVar(&bsargs.hostedModelName, "d", "", "")
+	flags.StringVar(&bsargs.hostedModelName, "default-model", "", "")
+
+	flags.Parse(os.Args[2:])
+
+	args := flags.Args()
+	switch len(args) {
+	case 0:
+		return fmt.Errorf("expected at least one positional arg, got none")
+	case 1:
+		bsargs.cloud = args[0]
+	case 2:
+		bsargs.cloud = args[0]
+		bsargs.controllerName = args[1]
+	default:
+		return fmt.Errorf("expected at most two positional args, got %v", args)
+	}
+
+	if i := strings.IndexRune(bsargs.cloud, '/'); i > 0 {
+		bsargs.cloud, bsargs.region = bsargs.cloud[:i], bsargs.cloud[i+1:]
+	}
+	if bsargs.controllerName == "" {
+		bsargs.controllerName = bsargs.cloud
+		if bsargs.region == "" {
+			bsargs.controllerName += "-" + bsargs.region
+		}
+	}
+
+	if bsargs.hostedModelName == "" {
+		bsargs.hostedModelName = "default"
+	}
+
+	return nil
+}
+
+func waitForBootstrapCompletion(result *bootstrapResult) error {
+	apiInfo := result.apiInfo()
 	dialOpts := api.DialOpts{
 		DialAddressInterval: 50 * time.Millisecond,
 		Timeout:             5 * time.Second,
@@ -128,7 +239,7 @@ func bootstrap(filenames fakejujuFilenames) error {
 	return errors.New("invalid delta")
 }
 
-func apiInfo(filenames fakejujuFilenames) error {
+func handleAPIInfo(filenames fakejujuFilenames) error {
 	info, err := readProcessInfo(filenames)
 	if err != nil {
 		return err
@@ -137,21 +248,22 @@ func apiInfo(filenames fakejujuFilenames) error {
 	jujuHome := os.Getenv("JUJU_DATA")
 	osenv.SetJujuXDGDataHome(jujuHome)
 	cmd := controller.NewShowControllerCommand()
-	ctx, err := coretesting.RunCommandInDir(
-		nil, cmd, os.Args[2:], info.WorkDir)
-	if err != nil {
+	if err := coretesting.InitCommand(cmd, os.Args[2:]); err != nil {
+		return err
+	}
+	ctx := coretesting.ContextForDir(nil, info.WorkDir)
+	if err := cmd.Run(ctx); err != nil {
 		return err
 	}
 	fmt.Print(ctx.Stdout)
 	return nil
 }
 
+func handleDestroyController(filenames fakejujuFilenames) error {
+	return destroyController(filenames)
+}
+
 func destroyController(filenames fakejujuFilenames) error {
-	info, err := readProcessInfo(filenames)
-	if err != nil {
-		return err
-	}
-	filenames = newFakeJujuFilenames("", "", info.WorkDir)
 	fd, err := os.OpenFile(filenames.fifoFile(), os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
@@ -203,7 +315,7 @@ type fakejujuFilenames struct {
 
 func newFakeJujuFilenames(datadir, logsdir, jujucfgdir string) fakejujuFilenames {
 	if datadir == "" {
-		datadir = os.Getenv("FAKE_JUJU_DATA_DIR")
+		datadir = os.Getenv(envDataDir)
 		if datadir == "" {
 			if jujucfgdir == "" {
 				jujucfgdir = os.Getenv("JUJU_DATA")
@@ -212,7 +324,7 @@ func newFakeJujuFilenames(datadir, logsdir, jujucfgdir string) fakejujuFilenames
 		}
 	}
 	if logsdir == "" {
-		logsdir = os.Getenv("FAKE_JUJU_LOGS_DIR")
+		logsdir = os.Getenv(envLogsDir)
 		if logsdir == "" {
 			logsdir = datadir
 		}
@@ -240,6 +352,12 @@ func (fj fakejujuFilenames) infoFile() string {
 // its logs.  Note that the normal Juju logs are not written here.
 func (fj fakejujuFilenames) logsFile() string {
 	return filepath.Join(fj.logsdir, "fake-juju.log")
+}
+
+// jujudLogsFile() returns the path to the file where fake-juju writes
+// the jujud logs.
+func (fj fakejujuFilenames) jujudLogsFile() string {
+	return filepath.Join(fj.logsdir, "jujud.log")
 }
 
 // fifoFile() returns the path to the FIFO file used by fake-juju.
@@ -290,38 +408,10 @@ func (br bootstrapResult) fakeJujuInfo() *processInfo {
 	}
 }
 
-// logsSymlinkFilenames() determines the source and target paths for
-// a symlink to the fake-juju logs file.  Such a symlink is relevant
-// because the fake-juju daemon may not know where the log file is
-// meant to go. It defaults to putting the log file in the default Juju
-// config dir. In that case, a symlink should be created from there to
-// the user-defined Juju config dir ($JUJU_DATA).
-func (br bootstrapResult) logsSymlinkFilenames(targetLogsFile string) (source, target string) {
-	if os.Getenv("FAKE_JUJU_LOGS_DIR") != "" {
-		return "", ""
-	}
-
-	filenames := newFakeJujuFilenames("", "", br.cfgdir)
-	source = filenames.logsFile()
-	target = targetLogsFile
-	return source, target
-}
-
 // apply() writes out the information from the bootstrap result to the
 // various files identified by the provided filenames.
-func (br bootstrapResult) apply(filenames fakejujuFilenames, controllerName string) error {
+func (br bootstrapResult) apply(filenames fakejujuFilenames) error {
 	if err := br.fakeJujuInfo().write(filenames.infoFile()); err != nil {
-		return err
-	}
-
-	logsSource, logsTarget := br.logsSymlinkFilenames(filenames.logsFile())
-	if logsSource != "" && logsTarget != "" {
-		if err := os.Symlink(logsSource, logsTarget); err != nil {
-			return err
-		}
-	}
-
-	if err := br.copyConfig(os.Getenv("JUJU_DATA"), controllerName); err != nil {
 		return err
 	}
 
@@ -333,6 +423,9 @@ func (br bootstrapResult) apply(filenames fakejujuFilenames, controllerName stri
 }
 
 func (br bootstrapResult) copyConfig(targetCfgDir, controllerName string) error {
+	if err := os.MkdirAll(targetCfgDir, 0755); err != nil {
+		return err
+	}
 	for _, name := range []string{"controllers.yaml", "models.yaml", "accounts.yaml"} {
 		source := filepath.Join(br.cfgdir, name)
 		target := filepath.Join(targetCfgDir, name)
@@ -360,8 +453,7 @@ func (br bootstrapResult) copyConfig(targetCfgDir, controllerName string) error 
 	return nil
 }
 
-// See github.com/juju/juju/blob/juju/testing/conn.go.
-const dummyControllerName = "kontroll"
+const dummyControllerName = jujutesting.ControllerName
 
 func parseApiInfo(stdout io.ReadCloser) (*bootstrapResult, error) {
 	buffer := bufio.NewReader(stdout)
@@ -371,6 +463,10 @@ func parseApiInfo(stdout io.ReadCloser) (*bootstrapResult, error) {
 		return nil, err
 	}
 	uuid := string(line)
+	if !utils.IsValidUUIDString(uuid) {
+		data, _ := ioutil.ReadAll(stdout)
+		return nil, fmt.Errorf("%s\n%s", line, data)
+	}
 
 	line, _, err = buffer.ReadLine()
 	if err != nil {
@@ -378,31 +474,37 @@ func parseApiInfo(stdout io.ReadCloser) (*bootstrapResult, error) {
 	}
 	workDir := string(line)
 
-	osenv.SetJujuXDGDataHome(workDir)
-	store := jujuclient.NewFileClientStore()
-	// hard-coded value in juju testing
-	// This will be replaced in JUJU_DATA copy of the juju client config.
-	currentController := dummyControllerName
-	one, err := store.ControllerByName(currentController)
-	if err != nil {
-		return nil, err
-	}
-
-	accountDetails, err := store.AccountDetails(currentController)
-	if err != nil {
-		return nil, err
-	}
-
 	result := &bootstrapResult{
 		dummyControllerName: dummyControllerName,
 		cfgdir:              workDir,
 		uuid:                uuid,
-		username:            accountDetails.User,
-		password:            accountDetails.Password,
-		addresses:           one.APIEndpoints,
-		caCert:              []byte(one.CACert),
 	}
 	return result, nil
+}
+
+func updateBootstrapResult(result *bootstrapResult) error {
+	osenv.SetJujuXDGDataHome(result.cfgdir)
+	store := jujuclient.NewFileClientStore()
+
+	// hard-coded value in juju testing
+	// This will be replaced in JUJU_DATA copy of the juju client config.
+	currentController := result.dummyControllerName
+
+	one, err := store.ControllerByName(currentController)
+	if err != nil {
+		return err
+	}
+	result.addresses = one.APIEndpoints
+	result.caCert = []byte(one.CACert)
+
+	accountDetails, err := store.AccountDetails(currentController)
+	if err != nil {
+		return err
+	}
+	result.username = accountDetails.User
+	result.password = accountDetails.Password
+
+	return nil
 }
 
 // Read the failures info file pointed by the FAKE_JUJU_FAILURES environment
@@ -411,9 +513,9 @@ func parseApiInfo(stdout io.ReadCloser) (*bootstrapResult, error) {
 // entity transition to an error state.
 func readFailuresInfo() (map[string]bool, error) {
 	log.Println("Checking for forced failures")
-	failuresPath := os.Getenv("FAKE_JUJU_FAILURES")
+	failuresPath := os.Getenv(envFailuresFile)
 	if failuresPath == "" {
-		log.Println("No FAKE_JUJU_FAILURES env variable set")
+		log.Printf("No %s env variable set\n", envFailuresFile)
 	}
 	log.Println("Reading failures file", failuresPath)
 	failuresInfo := map[string]bool{}
@@ -449,16 +551,26 @@ func readFailuresInfo() (map[string]bool, error) {
 type FakeJujuSuite struct {
 	jujutesting.JujuConnSuite
 
-	instanceCount  int
-	machineStarted map[string]bool
-	filenames      fakejujuFilenames
-	logFile        *os.File
+	instanceCount     int
+	machineStarted    map[string]bool
+	filenames         fakejujuFilenames
+	toCloseOnTearDown []io.Closer
 }
 
 var _ = gc.Suite(&FakeJujuSuite{})
 
 func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	s.JujuConnSuite.SetUpTest(c)
+
+	c.Assert(os.Getenv(envDataDir), gc.Not(gc.Equals), "")
+	s.filenames = newFakeJujuFilenames("", "", "")
+	// Note that LoggingSuite.SetUpTest (github.com/juju/testing/log.go),
+	// called via s.JujuConnSuite.SetUpTest(), calls loggo.ResetLogging().
+	// So we cannot set up logging before then, since any writer we
+	// register will get removed.  Consequently we lose any logs that get
+	// generated in the SetUpTest() call.
+	logFile, jujudLogFile := setUpLogging(c, s.filenames)
+	s.toCloseOnTearDown = append(s.toCloseOnTearDown, logFile, jujudLogFile)
 
 	ports := s.APIState.APIHostPorts()
 	err := s.State.SetAPIHostPorts(ports)
@@ -491,7 +603,7 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	c.Assert(stateServer.SetProviderAddresses(address), gc.IsNil)
 	now := time.Now()
 	sInfo := states.StatusInfo{
-		Status:  states.StatusStarted,
+		Status:  states.Started,
 		Message: "",
 		Since:   &now,
 	}
@@ -505,10 +617,6 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	apiInfo := s.APIInfo(c)
 	//fmt.Println(apiInfo.Addrs[0])
 	jujuHome := osenv.JujuXDGDataHome()
-	// IMPORTANT: don't remove this logging because it's used by the
-	// bootstrap command.
-	fmt.Println(apiInfo.ModelTag.Id())
-	fmt.Println(jujuHome)
 
 	binPath := filepath.Join(jujuHome, "bin")
 	os.Mkdir(binPath, 0755)
@@ -518,24 +626,51 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	os.Setenv("PATH", binPath+":"+os.Getenv("PATH"))
 
-	s.filenames = newFakeJujuFilenames("", "", jujuHome)
+	// Once this FIFO is created, users can start sending commands.
+	// The actual handling doesn't start until TestStart() runs.
 	syscall.Mknod(s.filenames.fifoFile(), syscall.S_IFIFO|0666, 0)
 
-	// Logging
-	logPath := s.filenames.logsFile()
-	s.logFile, err = os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	c.Assert(err, gc.IsNil)
+	// Send the info back to the bootstrap command.
+	reportInfo(apiInfo.ModelTag.Id(), jujuHome)
 
-	log.SetOutput(s.logFile)
 	log.Println("Started fake-juju at ", jujuHome)
+}
 
+func setUpLogging(c *gc.C, filenames fakejujuFilenames) (*os.File, *os.File) {
+	c.Assert(filenames.logsdir, gc.Not(gc.Equals), "")
+
+	// fake-juju logging
+	logPath := filenames.logsFile()
+	logFile, err := os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	c.Assert(err, gc.IsNil)
+	log.SetOutput(logFile)
+
+	// jujud logging
+	logPath = filenames.jujudLogsFile()
+	jujudLogFile, err := os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	c.Assert(err, gc.IsNil)
+	err = loggo.RegisterWriter("fake-juju-jujud-logs", loggo.NewSimpleWriter(jujudLogFile, nil))
+	c.Assert(err, gc.IsNil)
+	logger := loggo.GetLogger("fake-juju")
+	logger.Infof("--- starting logging ---")
+
+	return logFile, jujudLogFile
+}
+
+func reportInfo(uuid, jujuCfgDir string) {
+	// IMPORTANT: don't remove this logging because it's used by the
+	// bootstrap command.
+	fmt.Println(uuid)
+	fmt.Println(jujuCfgDir)
 }
 
 func (s *FakeJujuSuite) TearDownTest(c *gc.C) {
 	log.Println("Tearing down processes")
 	s.JujuConnSuite.TearDownTest(c)
-	log.Println("Closing log file")
-	s.logFile.Close()
+	log.Println("Closing log files")
+	for _, closer := range s.toCloseOnTearDown {
+		closer.Close()
+	}
 }
 
 func (s *FakeJujuSuite) TestStart(c *gc.C) {
@@ -625,12 +760,12 @@ func (s *FakeJujuSuite) handleAddMachine(id string) error {
 	}
 	status, _ := machine.Status()
 	log.Println("Machine has status:", string(status.Status), status.Message)
-	if status.Status == states.StatusPending {
+	if status.Status == states.Pending {
 		if err = s.startMachine(machine); err != nil {
 			log.Println("Got error with startMachine:", err)
 			return err
 		}
-	} else if status.Status == states.StatusStarted {
+	} else if status.Status == states.Started {
 		log.Println("Starting units on machine", id)
 		if _, ok := s.machineStarted[id]; !ok {
 			s.machineStarted[id] = true
@@ -661,19 +796,19 @@ func (s *FakeJujuSuite) handleAddUnit(id string) error {
 		return err
 	}
 	machineStatus, _ := machine.Status()
-	if machineStatus.Status != states.StatusStarted {
+	if machineStatus.Status != states.Started {
 		return nil
 	}
 	status, _ := unit.Status()
 	log.Println("Unit has status", string(status.Status), status.Message)
-	if status.Status != states.StatusActive && status.Status != states.StatusError {
+	if status.Status != states.Active && status.Status != states.Error {
 		log.Println("Start unit", id)
 		err = s.startUnit(unit)
 		if err != nil {
 			log.Println("Got error changing unit status", id, err)
 			return err
 		}
-	} else if status.Status != states.StatusError {
+	} else if status.Status != states.Error {
 		failuresInfo, err := readFailuresInfo()
 		if err != nil {
 			return err
@@ -684,7 +819,7 @@ func (s *FakeJujuSuite) handleAddUnit(id string) error {
 				log.Println("Got error checking agent status", id, err)
 				return err
 			}
-			if agentStatus.Status != states.StatusError {
+			if agentStatus.Status != states.Error {
 				log.Println("Error unit", id)
 				err = s.errorUnit(unit)
 				if err != nil {
@@ -701,7 +836,7 @@ func (s *FakeJujuSuite) startMachine(machine *state.Machine) error {
 	time.Sleep(500 * time.Millisecond)
 	now := time.Now()
 	sInfo := states.StatusInfo{
-		Status:  states.StatusStarted,
+		Status:  states.Started,
 		Message: "",
 		Since:   &now,
 	}
@@ -734,7 +869,7 @@ func (s *FakeJujuSuite) errorMachine(machine *state.Machine) error {
 	time.Sleep(500 * time.Millisecond)
 	now := time.Now()
 	sInfo := states.StatusInfo{
-		Status:  states.StatusError,
+		Status:  states.Error,
 		Message: "machine errored",
 		Since:   &now,
 	}
@@ -753,7 +888,7 @@ func (s *FakeJujuSuite) startUnits(machine *state.Machine) error {
 	return nil
 	for _, unit := range units {
 		unitStatus, _ := unit.Status()
-		if unitStatus.Status != states.StatusActive {
+		if unitStatus.Status != states.Active {
 			if err = s.startUnit(unit); err != nil {
 				return err
 			}
@@ -765,7 +900,7 @@ func (s *FakeJujuSuite) startUnits(machine *state.Machine) error {
 func (s *FakeJujuSuite) startUnit(unit *state.Unit) error {
 	now := time.Now()
 	sInfo := states.StatusInfo{
-		Status:  states.StatusStarted,
+		Status:  states.Started,
 		Message: "",
 		Since:   &now,
 	}
@@ -783,7 +918,7 @@ func (s *FakeJujuSuite) startUnit(unit *state.Unit) error {
 		return err
 	}
 	idleInfo := states.StatusInfo{
-		Status:  states.StatusIdle,
+		Status:  states.Idle,
 		Message: "",
 		Since:   &now,
 	}
@@ -798,7 +933,7 @@ func (s *FakeJujuSuite) errorUnit(unit *state.Unit) error {
 	log.Println("Erroring unit", unit.Name())
 	now := time.Now()
 	sInfo := states.StatusInfo{
-		Status:  states.StatusIdle,
+		Status:  states.Idle,
 		Message: "unit errored",
 		Since:   &now,
 	}

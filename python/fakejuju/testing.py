@@ -7,8 +7,8 @@ from . import fakejuju
 
 
 JUJU1_VER = "1.25.6"
-JUJU2_VER = "2.0-beta17"
-JUJU_VER = JUJU1_VER
+JUJU2_VER = "2.0.0"
+JUJU_VER = JUJU2_VER
 
 
 class FakeJujuFixture(Fixture):

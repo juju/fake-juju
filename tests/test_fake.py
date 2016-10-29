@@ -37,7 +37,7 @@ class _JujuFakeTest:
         super(_JujuFakeTest, self).setUp()
 
         self.env = os.environ.copy()
-        self.juju_home = cfgdir = tempfile.mkdtemp()
+        self.juju_home = cfgdir = tempfile.mkdtemp(prefix="fake-juju-test-")
         _jujuclient.prepare("dummy", "dummy", cfgdir, self.env, JUJU_VERSION)
 
         endpoint, uuid, password = self.bootstrap("dummy", "dummy", self.env)
@@ -100,7 +100,7 @@ class Juju2FakeTest(_JujuFakeTest, unittest.TestCase):
 
     def bootstrap(self, name, type, env):
         """Return the API endpoint after bootstrapping the controller."""
-        args = [JUJU_FAKE, "bootstrap", "--no-gui", name, type]
+        args = [JUJU_FAKE, "bootstrap", "--no-gui", type, name]
         subprocess.check_call(args, env=env)
 
         args = [JUJU_FAKE, "show-controller", "--format", "json",
@@ -108,7 +108,7 @@ class Juju2FakeTest(_JujuFakeTest, unittest.TestCase):
         output = subprocess.check_output(args, env=env)
         api_info = json.loads(output.decode())
         endpoint = str(api_info[name]["details"]["api-endpoints"][0])
-        model = api_info[name]["current-model"]
+        model = api_info[name]["current-model"].split("/", 1)[-1]
         uuid = api_info[name]["models"][model]["uuid"]
         password = api_info[name]["account"]["password"]
         return endpoint, uuid, password

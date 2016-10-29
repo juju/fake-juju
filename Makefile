@@ -63,8 +63,8 @@ else  ###########################################
 # for all versions
 
 ifndef JUJU_VERSIONS
-JUJU1_VERSIONS = 1.24.7 1.25.6
-JUJU2_VERSIONS = 2.0-beta17
+JUJU1_VERSIONS = 1.25.6
+JUJU2_VERSIONS = 2.0.0
 JUJU_VERSIONS = $(JUJU1_VERSIONS) $(JUJU2_VERSIONS)
 endif
 BUILT_VERSIONS = $(foreach version,$(JUJU_VERSIONS),$(version)/$(version))
