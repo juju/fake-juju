@@ -573,6 +573,7 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	s.toCloseOnTearDown = append(s.toCloseOnTearDown, logFile, jujudLogFile)
 
 	ports := s.APIState.APIHostPorts()
+	ports[0][0].SpaceName = "dummy-provider-network"
 	err := s.State.SetAPIHostPorts(ports)
 	c.Assert(err, gc.IsNil)
 
