@@ -155,7 +155,7 @@ py-install: py-build
 .PHONY: py-install-dev
 py-install-dev:
 	if [ ! "$(SKIP_PYTHON_LIB)" ]; then \
-		ln -snv $(PYTHON_LIB_ROOT)/fakejuju $(PYTHON_INSTALLDIR)/fakejuju; \
+		ln -snv --backup=existing --suffix .orig $(PYTHON_LIB_ROOT)/fakejuju $(PYTHON_INSTALLDIR)/fakejuju; \
 	fi
 
 .PHONY: py-clean
