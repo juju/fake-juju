@@ -11,6 +11,18 @@
  
  // UploadCharm uploads a charm using the given charm store client, and returns
  // the resulting charm URL and charm.
+--- 2.0.0/src/github.com/juju/juju/apiserver/charms.go	2016-10-13 14:31:49.000000000 +0000
++++ 2.0.0/src/github.com/juju/juju/apiserver/charms.go	2016-11-03 13:29:08.343283313 +0000
+@@ -284,7 +284,8 @@
+ 		if isImporting, err := modelIsImporting(st); err != nil {
+ 			return nil, errors.Trace(err)
+ 		} else if !isImporting {
+-			return nil, errors.New("cs charms may only be uploaded during model migration import")
++			// fake-juju allows uploading "charmstore" charms.
++			//return nil, errors.New("cs charms may only be uploaded during model migration import")
+ 		}
+ 
+ 		// If a revision argument is provided, it takes precedence
 --- 2.0.0/src/github.com/juju/juju/provider/dummy/environs.go	2015-07-06 15:01:14.200568258 +0200
 +++ 2.0.0/src/github.com/juju/juju/provider/dummy/environs.go	2015-07-06 15:18:32.648549661 +0200
 @@ -633,9 +633,9 @@
