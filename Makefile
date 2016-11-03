@@ -14,7 +14,7 @@ JUJU_PATCH = patches/juju-core_$(JUJU_VERSION).patch
 INSTALLDIR = $(DESTDIR)/usr/bin
 INSTALLED = $(INSTALLDIR)/fake-juju-$(JUJU_VERSION)
 
-$(JUJU_VERSION)/$(JUJU_VERSION): $(JUJU_VERSION)/fake-juju.go
+$(JUJU_VERSION)/$(JUJU_VERSION): $(JUJU_VERSION)/fake-juju.go $(JUJU_PATCH)
 	case $(JUJU_VERSION) in \
 		1.*) $(MAKE) build-common PATH=$$PATH JUJU_VERSION=$(JUJU_VERSION) ;;\
 		2.*) $(MAKE) build-common PATH=/usr/lib/go-$(GO_VERSION)/bin:$$PATH JUJU_VERSION=$(JUJU_VERSION) ;;\
