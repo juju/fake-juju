@@ -1,18 +1,6 @@
---- 2.0.0/src/github.com/juju/juju/testcharms/charm.go	2016-03-10 13:45:57.000000000 +0100
-+++ 2.0.0/src/github.com/juju/juju/testcharms/charm.go	2016-03-21 10:46:24.312966629 +0100
-@@ -17,7 +17,9 @@
- )
- 
- // Repo provides access to the test charm repository.
--var Repo = testing.NewRepo("charm-repo", "quantal")
-+// XXX fake-juju: avoid crashing because the charm-repo dir is not there
-+//var Repo = testing.NewRepo("charm-repo", "quantal")
-+var Repo = &testing.Repo{}
- 
- // UploadCharm uploads a charm using the given charm store client, and returns
- // the resulting charm URL and charm.
---- 2.0.0/src/github.com/juju/juju/apiserver/charms.go	2016-10-13 14:31:49.000000000 +0000
-+++ 2.0.0/src/github.com/juju/juju/apiserver/charms.go	2016-11-03 13:29:08.343283313 +0000
+diff -U 3 -r --no-dereference ./2.0.0/.unpacked-clean/src/github.com/juju/juju/apiserver/charms.go ./2.0.0/src/github.com/juju/juju/apiserver/charms.go
+--- ./2.0.0/.unpacked-clean/src/github.com/juju/juju/apiserver/charms.go	2016-10-13 14:31:49.000000000 +0000
++++ ./2.0.0/src/github.com/juju/juju/apiserver/charms.go	2016-11-03 15:55:24.773085965 +0000
 @@ -284,7 +284,8 @@
  		if isImporting, err := modelIsImporting(st); err != nil {
  			return nil, errors.Trace(err)
@@ -23,9 +11,11 @@
  		}
  
  		// If a revision argument is provided, it takes precedence
---- 2.0.0/src/github.com/juju/juju/provider/dummy/environs.go	2015-07-06 15:01:14.200568258 +0200
-+++ 2.0.0/src/github.com/juju/juju/provider/dummy/environs.go	2015-07-06 15:18:32.648549661 +0200
-@@ -633,9 +633,9 @@
+Only in ./2.0.0/src/github.com/juju/juju/apiserver: charms.go~
+diff -U 3 -r --no-dereference ./2.0.0/.unpacked-clean/src/github.com/juju/juju/provider/dummy/environs.go ./2.0.0/src/github.com/juju/juju/provider/dummy/environs.go
+--- ./2.0.0/.unpacked-clean/src/github.com/juju/juju/provider/dummy/environs.go	2016-10-13 14:31:49.000000000 +0000
++++ ./2.0.0/src/github.com/juju/juju/provider/dummy/environs.go	2016-11-03 13:52:34.827516374 +0000
+@@ -643,9 +643,9 @@
  
  // PrecheckInstance is specified in the state.Prechecker interface.
  func (*environ) PrecheckInstance(series string, cons constraints.Value, placement string) error {
@@ -38,8 +28,23 @@
  	return nil
  }
  
---- 2.0.0/src/github.com/juju/juju/testing/cert.go	2016-03-18 09:25:34 +0000
-+++ 2.0.0/src/github.com/juju/juju/testing/cert.go	2016-03-18 09:26:04 +0000
+diff -U 3 -r --no-dereference ./2.0.0/.unpacked-clean/src/github.com/juju/juju/testcharms/charm.go ./2.0.0/src/github.com/juju/juju/testcharms/charm.go
+--- ./2.0.0/.unpacked-clean/src/github.com/juju/juju/testcharms/charm.go	2016-10-13 14:31:49.000000000 +0000
++++ ./2.0.0/src/github.com/juju/juju/testcharms/charm.go	2016-11-03 13:52:34.827516374 +0000
+@@ -17,7 +17,9 @@
+ )
+ 
+ // Repo provides access to the test charm repository.
+-var Repo = testing.NewRepo("charm-repo", "quantal")
++// XXX fake-juju: avoid crashing because the charm-repo dir is not there
++//var Repo = testing.NewRepo("charm-repo", "quantal")
++var Repo = &testing.Repo{}
+ 
+ // UploadCharmWithMeta pushes a new charm to the charmstore.
+ // The uploaded charm takes the supplied charmURL with metadata.yaml and metrics.yaml
+diff -U 3 -r --no-dereference ./2.0.0/.unpacked-clean/src/github.com/juju/juju/testing/cert.go ./2.0.0/src/github.com/juju/juju/testing/cert.go
+--- ./2.0.0/.unpacked-clean/src/github.com/juju/juju/testing/cert.go	2016-10-13 14:31:49.000000000 +0000
++++ ./2.0.0/src/github.com/juju/juju/testing/cert.go	2016-11-03 13:52:34.827516374 +0000
 @@ -52,7 +52,7 @@
  }
  
@@ -58,4 +63,3 @@
  	var hostnames []string
  	srvCert, srvKey, err := cert.NewServer(CACert, CAKey, time.Now().AddDate(10, 0, 0), hostnames)
  	if err != nil {
-
