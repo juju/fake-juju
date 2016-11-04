@@ -654,7 +654,7 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	// Send the info back to the bootstrap command.
 	reportInfo(apiInfo.ModelTag.Id(), jujuHome)
 
-	log.Println("Started fake-juju at ", jujuHome)
+	log.Println("Started fake-juju at", jujuHome)
 }
 
 func setUpLogging(c *gc.C, filenames fakejujuFilenames) (*os.File, *os.File) {
@@ -706,15 +706,15 @@ func (s *FakeJujuSuite) TestStart(c *gc.C) {
 		c.Assert(err, gc.IsNil)
 		defer func() {
 			if err := fd.Close(); err != nil {
-				c.Logf("failed closing FIFO file: %s", err)
+				log.Printf("failed closing FIFO file: %s\n", err)
 			}
 			// Mark the controller as destroyed by renaming some files.
 			if err := os.Rename(fifoPath, fifoPath+".destroyed"); err != nil {
-				c.Logf("failed renaming FIFO file: %s", err)
+				log.Printf("failed renaming FIFO file: %s\n", err)
 			}
 			infofile := s.filenames.infoFile()
 			if err := os.Rename(infofile, infofile+".destroyed"); err != nil {
-				c.Logf("failed renaming info file: %s", err)
+				log.Printf("failed renaming info file: %s\n", err)
 			}
 		}()
 		scanner := bufio.NewScanner(fd)
