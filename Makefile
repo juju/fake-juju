@@ -11,10 +11,13 @@ ifdef JUJU_VERSION  #############################
 GO_VERSION = 1.6
 JUJU_TARBALL = juju-core_$(JUJU_VERSION).tar.gz
 JUJU_PATCH = patches/juju-core_$(JUJU_VERSION).patch
+GO_PATH = $(JUJU_VERSION)
+JUJU_SRC = $(GO_PATH)/src
+JUJU_UNPACKED_CLEAN = $(JUJU_VERSION)/.unpacked-clean
 INSTALLDIR = $(DESTDIR)/usr/bin
 INSTALLED = $(INSTALLDIR)/fake-juju-$(JUJU_VERSION)
 
-$(JUJU_VERSION)/$(JUJU_VERSION): $(JUJU_VERSION)/fake-juju.go
+$(JUJU_VERSION)/$(JUJU_VERSION): $(JUJU_VERSION)/fake-juju.go $(JUJU_PATCH)
 	case $(JUJU_VERSION) in \
 		1.*) $(MAKE) build-common PATH=$$PATH JUJU_VERSION=$(JUJU_VERSION) ;;\
 		2.*) $(MAKE) build-common PATH=/usr/lib/go-$(GO_VERSION)/bin:$$PATH JUJU_VERSION=$(JUJU_VERSION) ;;\
@@ -27,15 +30,25 @@ juju-core_%.tar.gz:
 	esac;\
 	wget https://launchpad.net/$$PROJECT/$(shell (echo $* | cut -f 1 -d - | cut -f 1,2 -d .))/$*/+download/$@
 
+$(JUJU_UNPACKED_CLEAN): $(JUJU_TARBALL)
+	mkdir -p $(JUJU_UNPACKED_CLEAN)
+	tar -C $(JUJU_UNPACKED_CLEAN) --strip=1 -z -xf $(JUJU_TARBALL)
+
+.PHONY: update-patch
+update-patch: $(JUJU_SRC) $(JUJU_UNPACKED_CLEAN)
+	diff -U 3 -r --no-dereference ./$(JUJU_UNPACKED_CLEAN)/src ./$(JUJU_SRC) > $(JUJU_PATCH); \
+	echo " -- diff exited with $$? --"
+	rm -rf $(JUJU_UNPACKED_CLEAN)
+
 .PHONY: build
 build: $(JUJU_VERSION)/$(JUJU_VERSION) py-build
 
 .PHONY: build-common
 build-common: $(JUJU_TARBALL) $(JUJU_PATCH)
-	rm -rf $(JUJU_VERSION)/src  # Go doesn't play nice with existing files.
+	rm -rf $(JUJU_SRC)  # Go doesn't play nice with existing files.
 	tar -C $(JUJU_VERSION) --strip=1 -z -xf $(JUJU_TARBALL)
 	patch -p0 < $(JUJU_PATCH)
-	cd $(JUJU_VERSION) && GOPATH=$(shell pwd)/$(JUJU_VERSION) PATH=$(PATH) go build
+	cd $(JUJU_VERSION) && GOPATH=$(shell pwd)/$(GO_PATH) PATH=$(PATH) go build
 
 .PHONY: install
 install: $(JUJU_VERSION)/$(JUJU_VERSION) py-install-dev
@@ -49,7 +62,7 @@ install-dev: $(JUJU_VERSION)/$(JUJU_VERSION) py-install-dev
 .PHONY: clean
 clean: py-clean
 	rm -f $(JUJU_TARBALL)
-	rm -rf $(JUJU_VERSION)/src
+	rm -rf $(JUJU_SRC)
 	rm -f $(JUJU_VERSION)/$(JUJU_VERSION)
 	rm -rf _trial_temp
 	rm -f tests/*.pyc
@@ -72,6 +85,12 @@ BUILT_VERSIONS = $(foreach version,$(JUJU_VERSIONS),$(version)/$(version))
 $(BUILT_VERSIONS):
 	for VERSION in $(JUJU_VERSIONS); do \
 	    $(MAKE) build JUJU_VERSION=$$VERSION SKIP_PYTHON_LIB=TRUE; \
+	done
+
+.PHONY: update-patch
+update-patch:
+	for VERSION in $(JUJU_VERSIONS); do \
+	    $(MAKE) update-patch JUJU_VERSION=$$VERSION; \
 	done
 
 .PHONY: build
@@ -136,7 +155,7 @@ py-install: py-build
 .PHONY: py-install-dev
 py-install-dev:
 	if [ ! "$(SKIP_PYTHON_LIB)" ]; then \
-		ln -snv $(PYTHON_LIB_ROOT)/fakejuju $(PYTHON_INSTALLDIR)/fakejuju; \
+		ln -snv --backup=existing --suffix .orig $(PYTHON_LIB_ROOT)/fakejuju $(PYTHON_INSTALLDIR)/fakejuju; \
 	fi
 
 .PHONY: py-clean
