@@ -562,6 +562,26 @@ var _ = gc.Suite(&FakeJujuSuite{})
 func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	s.JujuConnSuite.SetUpTest(c)
 
+	// Juju needs internet access to reach the charm store.  This is
+	// necessary to download charmstore charms (e.g. when adding a
+	// service.  In the case of downloading charms, the controller
+	// does not try to download if the charm is already in the database.
+	// So internet access could go back to disabled if we were to add
+	// the charm directly before using any API methods that try to
+	// download it.  Here are some ideas on how to do that:
+	//  * use the API's "upload charm" HTTP endpoint (POST on /charms);
+	//    this requires disabling the prohibition against uploading
+	//    charmstore charms (which we've done already in fake-juju);
+	//    this could be accomplished using txjuju, python-jujuclient,
+	//    or manually with httplib (all have auth complexity)
+	//  * add an "upload-charm" command to fake-juju that forces a
+	//    charmstore charm into the DB
+	//  * add the service with a "local" charm schema and then forcibly
+	//    change the charm's schema to "cs" in the DB
+	// In the meantime, we allow fake-juju to have internet access.
+	// XXX (lp:1639276): Remove this special case.
+	utils.OutgoingAccessAllowed = true
+
 	c.Assert(os.Getenv(envDataDir), gc.Not(gc.Equals), "")
 	s.filenames = newFakeJujuFilenames("", "", "")
 	// Note that LoggingSuite.SetUpTest (github.com/juju/testing/log.go),
@@ -634,7 +654,7 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	// Send the info back to the bootstrap command.
 	reportInfo(apiInfo.ModelTag.Id(), jujuHome)
 
-	log.Println("Started fake-juju at ", jujuHome)
+	log.Println("Started fake-juju at", jujuHome)
 }
 
 func setUpLogging(c *gc.C, filenames fakejujuFilenames) (*os.File, *os.File) {
@@ -686,15 +706,15 @@ func (s *FakeJujuSuite) TestStart(c *gc.C) {
 		c.Assert(err, gc.IsNil)
 		defer func() {
 			if err := fd.Close(); err != nil {
-				c.Logf("failed closing FIFO file: %s", err)
+				log.Printf("failed closing FIFO file: %s\n", err)
 			}
 			// Mark the controller as destroyed by renaming some files.
 			if err := os.Rename(fifoPath, fifoPath+".destroyed"); err != nil {
-				c.Logf("failed renaming FIFO file: %s", err)
+				log.Printf("failed renaming FIFO file: %s\n", err)
 			}
 			infofile := s.filenames.infoFile()
 			if err := os.Rename(infofile, infofile+".destroyed"); err != nil {
-				c.Logf("failed renaming info file: %s", err)
+				log.Printf("failed renaming info file: %s\n", err)
 			}
 		}()
 		scanner := bufio.NewScanner(fd)
