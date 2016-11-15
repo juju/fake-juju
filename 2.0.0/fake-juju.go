@@ -921,7 +921,7 @@ func (s *FakeJujuSuite) startUnits(machine *state.Machine) error {
 func (s *FakeJujuSuite) startUnit(unit *state.Unit) error {
 	now := time.Now()
 	sInfo := states.StatusInfo{
-		Status:  states.Started,
+		Status:  states.Active,
 		Message: "",
 		Since:   &now,
 	}
