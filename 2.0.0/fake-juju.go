@@ -91,7 +91,7 @@ func handleBootstrap(filenames fakejujuFilenames) (returnedErr error) {
 	command.Env = os.Environ()
 	command.Env = append(
 		command.Env, "ADMIN_PASSWORD="+"pwd")
-	defaultSeries := "trusty"
+	defaultSeries := "xenial"
 	command.Env = append(command.Env, "DEFAULT_SERIES="+defaultSeries)
 	command.Env = append(command.Env, envDataDir+"="+filenames.datadir)
 	stdout, err := command.StdoutPipe()
@@ -599,7 +599,7 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 
 	s.machineStarted = make(map[string]bool)
 	s.PatchValue(&corecharm.CacheDir, c.MkDir())
-	defaultSeries := "trusty"
+	defaultSeries := "xenial"
 	if os.Getenv("DEFAULT_SERIES") != "" {
 		defaultSeries = os.Getenv("DEFAULT_SERIES")
 	}
