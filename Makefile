@@ -149,7 +149,7 @@ py-install: py-build
 	if [ ! "$(SKIP_PYTHON_LIB)" ]; then \
 		mkdir -p $(PYTHON_INSTALLDIR); \
 		cd python; \
-		$(PYTHON) setup.py install $(PYTHON_INSTALL_OPTION); \
+		PYTHONPATH=$(PYTHON_INSTALLDIR):$$PYTHONPATH $(PYTHON) setup.py install $(PYTHON_INSTALL_OPTION); \
 	fi
 
 .PHONY: py-install-dev
