@@ -932,7 +932,6 @@ func (s *FakeJujuSuite) startUnits(machine *state.Machine) error {
 	if err != nil {
 		return err
 	}
-	return nil
 	for _, unit := range units {
 		unitStatus, _ := unit.Status()
 		if unitStatus.Status != states.Active {
