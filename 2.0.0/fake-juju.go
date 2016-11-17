@@ -855,18 +855,19 @@ func (s *FakeJujuSuite) handleAddUnit(id string) error {
 			log.Println("Got error changing unit status", id, err)
 			return err
 		}
-	} else if status.Status != states.Error {
-		failuresInfo, err := readFailuresInfo()
+	} else {
+		agentStatus, err := unit.AgentStatus()
 		if err != nil {
+			log.Println("Got error checking agent status", id, err)
 			return err
 		}
-		if _, ok := failuresInfo["unit-"+id]; ok {
-			agentStatus, err := unit.AgentStatus()
+
+		if status.Status != states.Error && agentStatus.Status != states.Error {
+			failuresInfo, err := readFailuresInfo()
 			if err != nil {
-				log.Println("Got error checking agent status", id, err)
 				return err
 			}
-			if agentStatus.Status != states.Error {
+			if _, ok := failuresInfo["unit-"+id]; ok {
 				log.Println("Error unit", id)
 				err = s.errorUnit(unit)
 				if err != nil {
@@ -944,34 +945,33 @@ func (s *FakeJujuSuite) startUnits(machine *state.Machine) error {
 }
 
 func (s *FakeJujuSuite) startUnit(unit *state.Unit) error {
-	now := time.Now()
-	sInfo := states.StatusInfo{
-		Status:  states.Active,
-		Message: "",
-		Since:   &now,
-	}
-	err := unit.SetStatus(sInfo)
-	if err != nil {
-		return err
-	}
-	_, err = unit.SetAgentPresence()
-	if err != nil {
+	if _, err := unit.SetAgentPresence(); err != nil {
 		return err
 	}
 	s.State.StartSync()
-	err = unit.WaitAgentPresence(coretesting.LongWait)
-	if err != nil {
+	if err := unit.WaitAgentPresence(coretesting.LongWait); err != nil {
 		return err
 	}
+	now := time.Now()
+
 	idleInfo := states.StatusInfo{
 		Status:  states.Idle,
 		Message: "",
 		Since:   &now,
 	}
-	err = unit.SetAgentStatus(idleInfo)
-	if err != nil {
+	if err := unit.SetAgentStatus(idleInfo); err != nil {
 		return err
 	}
+
+	sInfo := states.StatusInfo{
+		Status:  states.Active,
+		Message: "",
+		Since:   &now,
+	}
+	if err := unit.SetStatus(sInfo); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -979,7 +979,7 @@ func (s *FakeJujuSuite) errorUnit(unit *state.Unit) error {
 	log.Println("Erroring unit", unit.Name())
 	now := time.Now()
 	sInfo := states.StatusInfo{
-		Status:  states.Idle,
+		Status:  states.Error,
 		Message: "unit errored",
 		Since:   &now,
 	}
