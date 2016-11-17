@@ -754,6 +754,10 @@ func (s *FakeJujuSuite) TestStart(c *gc.C) {
 				unitId := entityId.Id
 				c.Assert(s.handleAddUnit(unitId), gc.IsNil)
 			}
+			if entityId.Kind == "action" {
+				actionId := entityId.Id
+				c.Assert(s.handleAction(actionId), gc.IsNil)
+			}
 			log.Println("Done processing delta")
 		}
 	}
@@ -794,6 +798,28 @@ func (s *FakeJujuSuite) handleAddMachine(id string) error {
 				log.Println("Got error with startUnits", err)
 				return err
 			}
+		}
+	}
+	return nil
+}
+
+func (s *FakeJujuSuite) handleAction(id string) error {
+	action, err := s.State.Action(id)
+	log.Println("Handle action", id)
+	if err != nil {
+		log.Println("Got error with get action", err)
+		return err
+	}
+	if action.Status() == state.ActionPending {
+		log.Println("Action is pending")
+		output := map[string]interface{}{"output": "action ran successfully"}
+		results := state.ActionResults{
+			Status:  state.ActionCompleted,
+			Results: output,
+		}
+		if _, err := action.Finish(results); err != nil {
+			log.Println("Err on action results", err)
+			return err
 		}
 	}
 	return nil
@@ -906,7 +932,6 @@ func (s *FakeJujuSuite) startUnits(machine *state.Machine) error {
 	if err != nil {
 		return err
 	}
-	return nil
 	for _, unit := range units {
 		unitStatus, _ := unit.Status()
 		if unitStatus.Status != states.Active {
