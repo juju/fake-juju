@@ -14,12 +14,13 @@ Adding a new version
 Dependencies
 ------------
 
-To run tests, the code will need a recent python-jujuclient package installed.
-One should add the juju-stable PPA to get a fresh enough version on at least
-trusty and vivid:
+To run tests, the code will need the latest python-jujuclient and python-txjuju
+packages installed. These builds are available from the juju-stable and
+txjuju-daily PPAs and can be added with:
 
-sudo add-apt-repository ppa:juju/stable
-sudo apt-get update && sudo apt-get install python-jujuclient
+sudo add-apt-repository -y ppa:juju/stable
+sudo add-apt-repository -y ppa:landscape/txjuju-daily
+sudo apt-get update && sudo apt-get install python-jujuclient python-txjuju
 
 Building
 ---------
