@@ -182,7 +182,6 @@ JUJUCLIENT_REQ = $(JUJUCLIENT_DOWNLOADS)/requirements
 
 .PHONY: ci-test
 ci-test:
-	sudo add-apt-repository -y --update ppa:landscape/txjuju-daily
 	sudo apt-get -y install --force-yes \
 		wget \
 		python3-pip \
