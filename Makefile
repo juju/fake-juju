@@ -129,7 +129,11 @@ PYTHON = python
 ifndef PYTHON_INSTALLDIR
 PYTHON_INSTALLDIR = $(DESTDIR)/usr/lib/python2.7/dist-packages
 endif
-PYTHON_INSTALL_OPTION = --install-lib $(PYTHON_INSTALLDIR)
+ifndef PYTHON_SCRIPTDIR
+PYTHON_SCRIPTDIR = $(DESTDIR)/usr/local/bin
+endif
+MODULEDIR = $(DESTDIR)/usr/local/bin
+PYTHON_INSTALL_OPTION = --install-lib $(PYTHON_INSTALLDIR) --install-scripts $(PYTHON_SCRIPTDIR)
 
 PYTHON_LIB_ROOT = $(shell pwd)/python
 # TODO: read from python/fakejuju/__init__.py
@@ -149,7 +153,7 @@ py-install: py-build
 	if [ ! "$(SKIP_PYTHON_LIB)" ]; then \
 		mkdir -p $(PYTHON_INSTALLDIR); \
 		cd python; \
-		$(PYTHON) setup.py install $(PYTHON_INSTALL_OPTION); \
+		PYTHONPATH=$(PYTHON_INSTALLDIR):$$PYTHONPATH $(PYTHON) setup.py install $(PYTHON_INSTALL_OPTION); \
 	fi
 
 .PHONY: py-install-dev
