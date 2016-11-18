@@ -45,8 +45,8 @@ for path, dirs, files in os.walk(package_name):
 DEPS = ['fixtures',
         'testtools',
         'txjuju',
-        'twisted',
-        'yaml',
+        'Twisted',
+        'PyYAML',
         ]
 
 
