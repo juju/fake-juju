@@ -63,3 +63,16 @@ diff -U 3 -r --no-dereference ./2.0.0/.unpacked-clean/src/github.com/juju/juju/t
  	var hostnames []string
  	srvCert, srvKey, err := cert.NewServer(CACert, CAKey, time.Now().AddDate(10, 0, 0), hostnames)
  	if err != nil {
+diff -U 3 -r --no-dereference ./2.0.0/.unpacked-clean/src/gopkg.in/mgo.v2/bson/json.go ./2.0.0/src/gopkg.in/mgo.v2/bson/json.go
+--- ./2.0.0/.unpacked-clean/src/gopkg.in/mgo.v2/bson/json.go	2016-10-13 09:32:16.000000000 -0500
++++ ./2.0.0/src/gopkg.in/mgo.v2/bson/json.go	2016-11-21 07:55:31.696036251 -0600
+@@ -317,7 +317,8 @@
+ func jencInt(v interface{}) ([]byte, error) {
+ 	n := v.(int)
+ 	f := `{"$numberLong":"%d"}`
+-	if n <= 1<<53 {
++	// fake-juju apply https://github.com/go-mgo/mgo/pull/311
++	if int64(n) <= 1<<53 {
+ 		f = `%d`
+ 	}
+ 	return fbytes(f, n), nil
