@@ -24,7 +24,7 @@ clean:
 	done	
 
 .PHONY: test py-test
-test: $(BUILT_VERSIONS)
+test: build
 	# Use xargs here so that we don't throw away the return codes, and
 	# correctly fail if any of the tests fail
 	@echo -n $(JUJU_VERSIONS) | xargs -t -d' ' -I {} $(MAKE) -C {} test JUJU_VERSION={}
