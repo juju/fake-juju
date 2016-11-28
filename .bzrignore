@@ -1,2 +1,3 @@
 juju-core_*.tar.gz
 */src
+__pycache__
