@@ -1,9 +1,12 @@
 #!/usr/bin/make -f
 
+export PYBUILD_NAME=fakejuju
+
 dh_extra_flags = -pfake-juju -ppython-fakejuju
 
 %:
 	dh $@
+	dh $@ --sourcedir=python --with python2 --buildsystem=pybuild
 
 override_dh_auto_test:
 	# Don't run tests
