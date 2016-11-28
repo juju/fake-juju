@@ -1,7 +1,7 @@
 GO_VERSION = 1.6
-GO_PATH = $(shell pwd)
+GO_PATH = $(CURDIR)
 
-JUJU_VERSION = $(shell basename $(shell pwd))
+JUJU_VERSION = $(shell basename $(CURDIR))
 JUJU_MAJOR = $(shell echo $(JUJU_VERSION) | cut -f1 -d.)
 JUJU_MAJOR_MINOR = $(shell (echo $(JUJU_VERSION) | cut -f 1,2 -d .))
 JUJU_PATCH = juju-core.patch
