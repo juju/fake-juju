@@ -1,6 +1,6 @@
-diff -U 3 -r --no-dereference ./2.0.0/.unpacked-clean/src/github.com/juju/juju/apiserver/charms.go ./2.0.0/src/github.com/juju/juju/apiserver/charms.go
---- ./2.0.0/.unpacked-clean/src/github.com/juju/juju/apiserver/charms.go	2016-10-13 14:31:49.000000000 +0000
-+++ ./2.0.0/src/github.com/juju/juju/apiserver/charms.go	2016-11-03 15:55:24.773085965 +0000
+diff -U 3 -r --no-dereference ./.unpacked-clean/github.com/juju/juju/apiserver/charms.go ./src/github.com/juju/juju/apiserver/charms.go
+--- ./.unpacked-clean/github.com/juju/juju/apiserver/charms.go	2016-10-13 14:31:49.000000000 +0000
++++ ./src/github.com/juju/juju/apiserver/charms.go	2016-11-03 15:55:24.773085965 +0000
 @@ -284,7 +284,8 @@
  		if isImporting, err := modelIsImporting(st); err != nil {
  			return nil, errors.Trace(err)
@@ -11,10 +11,10 @@ diff -U 3 -r --no-dereference ./2.0.0/.unpacked-clean/src/github.com/juju/juju/a
  		}
  
  		// If a revision argument is provided, it takes precedence
-Only in ./2.0.0/src/github.com/juju/juju/apiserver: charms.go~
-diff -U 3 -r --no-dereference ./2.0.0/.unpacked-clean/src/github.com/juju/juju/provider/dummy/environs.go ./2.0.0/src/github.com/juju/juju/provider/dummy/environs.go
---- ./2.0.0/.unpacked-clean/src/github.com/juju/juju/provider/dummy/environs.go	2016-10-13 14:31:49.000000000 +0000
-+++ ./2.0.0/src/github.com/juju/juju/provider/dummy/environs.go	2016-11-03 13:52:34.827516374 +0000
+Only in ./src/github.com/juju/juju/apiserver: charms.go~
+diff -U 3 -r --no-dereference ./.unpacked-clean/github.com/juju/juju/provider/dummy/environs.go ./src/github.com/juju/juju/provider/dummy/environs.go
+--- ./.unpacked-clean/github.com/juju/juju/provider/dummy/environs.go	2016-10-13 14:31:49.000000000 +0000
++++ ./src/github.com/juju/juju/provider/dummy/environs.go	2016-11-03 13:52:34.827516374 +0000
 @@ -643,9 +643,9 @@
  
  // PrecheckInstance is specified in the state.Prechecker interface.
@@ -28,9 +28,9 @@ diff -U 3 -r --no-dereference ./2.0.0/.unpacked-clean/src/github.com/juju/juju/p
  	return nil
  }
  
-diff -U 3 -r --no-dereference ./2.0.0/.unpacked-clean/src/github.com/juju/juju/testcharms/charm.go ./2.0.0/src/github.com/juju/juju/testcharms/charm.go
---- ./2.0.0/.unpacked-clean/src/github.com/juju/juju/testcharms/charm.go	2016-10-13 14:31:49.000000000 +0000
-+++ ./2.0.0/src/github.com/juju/juju/testcharms/charm.go	2016-11-03 13:52:34.827516374 +0000
+diff -U 3 -r --no-dereference ./.unpacked-clean/github.com/juju/juju/testcharms/charm.go ./src/github.com/juju/juju/testcharms/charm.go
+--- ./.unpacked-clean/github.com/juju/juju/testcharms/charm.go	2016-10-13 14:31:49.000000000 +0000
++++ ./src/github.com/juju/juju/testcharms/charm.go	2016-11-03 13:52:34.827516374 +0000
 @@ -17,7 +17,9 @@
  )
  
@@ -42,9 +42,9 @@ diff -U 3 -r --no-dereference ./2.0.0/.unpacked-clean/src/github.com/juju/juju/t
  
  // UploadCharmWithMeta pushes a new charm to the charmstore.
  // The uploaded charm takes the supplied charmURL with metadata.yaml and metrics.yaml
-diff -U 3 -r --no-dereference ./2.0.0/.unpacked-clean/src/github.com/juju/juju/testing/cert.go ./2.0.0/src/github.com/juju/juju/testing/cert.go
---- ./2.0.0/.unpacked-clean/src/github.com/juju/juju/testing/cert.go	2016-10-13 14:31:49.000000000 +0000
-+++ ./2.0.0/src/github.com/juju/juju/testing/cert.go	2016-11-03 13:52:34.827516374 +0000
+diff -U 3 -r --no-dereference ./.unpacked-clean/github.com/juju/juju/testing/cert.go ./src/github.com/juju/juju/testing/cert.go
+--- ./.unpacked-clean/github.com/juju/juju/testing/cert.go	2016-10-13 14:31:49.000000000 +0000
++++ ./src/github.com/juju/juju/testing/cert.go	2016-11-03 13:52:34.827516374 +0000
 @@ -52,7 +52,7 @@
  }
  
@@ -63,9 +63,9 @@ diff -U 3 -r --no-dereference ./2.0.0/.unpacked-clean/src/github.com/juju/juju/t
  	var hostnames []string
  	srvCert, srvKey, err := cert.NewServer(CACert, CAKey, time.Now().AddDate(10, 0, 0), hostnames)
  	if err != nil {
-diff -U 3 -r --no-dereference ./2.0.0/.unpacked-clean/src/gopkg.in/mgo.v2/bson/json.go ./2.0.0/src/gopkg.in/mgo.v2/bson/json.go
---- ./2.0.0/.unpacked-clean/src/gopkg.in/mgo.v2/bson/json.go	2016-10-13 09:32:16.000000000 -0500
-+++ ./2.0.0/src/gopkg.in/mgo.v2/bson/json.go	2016-11-21 07:55:31.696036251 -0600
+diff -U 3 -r --no-dereference ./.unpacked-clean/gopkg.in/mgo.v2/bson/json.go ./src/gopkg.in/mgo.v2/bson/json.go
+--- ./.unpacked-clean/gopkg.in/mgo.v2/bson/json.go	2016-10-13 09:32:16.000000000 -0500
++++ ./src/gopkg.in/mgo.v2/bson/json.go	2016-11-21 07:55:31.696036251 -0600
 @@ -317,7 +317,8 @@
  func jencInt(v interface{}) ([]byte, error) {
  	n := v.(int)

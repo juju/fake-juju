@@ -8,8 +8,8 @@ Adding a new version
 ---------------------
 
 1) Edit the Makefile and add the desired version on the very first line.
-2) Create a new version subdirectory, copy fake_juju.go there.
-3) Make sure there is a corresponding .patch file in the patches/ subdirectory.
+2) Create a new version subdirectory, copy fake_juju.go and other files
+   there (e.g. Makefile and juju-core.patch)
 
 Dependencies
 ------------
