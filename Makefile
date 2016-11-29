@@ -1,4 +1,4 @@
-JUJU_VERSIONS = 1.25.6 2.0.0
+JUJU_VERSIONS = 1.25.6 2.0.0 2.0.2
 
 JUJUCLIENT_DOWNLOADS = $(shell pwd)/tests/jujuclient-archive
 JUJUCLIENT_REQ = $(JUJUCLIENT_DOWNLOADS)/requirements
