@@ -26,13 +26,6 @@ type FakeJujuSuite struct {
 func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	s.JujuConnSuite.SetUpTest(c)
 
-	// Note that LoggingSuite.SetUpTest (github.com/juju/testing/log.go),
-	// called via s.JujuConnSuite.SetUpTest(), calls loggo.ResetLogging().
-	// So we cannot set up logging before then, since any writer we
-	// register will get removed.  Consequently we lose any logs that get
-	// generated in the SetUpTest() call.
-	setupLogging(s.options.Output, s.options.Level)
-
 	s.PatchValue(&corecharm.CacheDir, c.MkDir())
 
 	s.service = NewFakeJujuService(s.State, s.APIState, s.options)

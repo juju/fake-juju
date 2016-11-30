@@ -1,6 +1,6 @@
-diff -U 3 -r --no-dereference ./.unpacked-clean/github.com/juju/juju/apiserver/charms.go ./src/github.com/juju/juju/apiserver/charms.go
---- ./.unpacked-clean/github.com/juju/juju/apiserver/charms.go	2016-10-13 14:31:49.000000000 +0000
-+++ ./src/github.com/juju/juju/apiserver/charms.go	2016-11-03 15:55:24.773085965 +0000
+diff -U 3 -r --no-dereference /home/ubuntu/fake-juju/initial-unit-tests/2.0.2/.unpacked-clean/github.com/juju/juju/apiserver/charms.go /home/ubuntu/fake-juju/initial-unit-tests/2.0.2/src/github.com/juju/juju/apiserver/charms.go
+--- /home/ubuntu/fake-juju/initial-unit-tests/2.0.2/.unpacked-clean/github.com/juju/juju/apiserver/charms.go	2016-11-11 00:08:09.000000000 +0000
++++ /home/ubuntu/fake-juju/initial-unit-tests/2.0.2/src/github.com/juju/juju/apiserver/charms.go	2016-11-30 06:09:26.975210508 +0000
 @@ -284,7 +284,8 @@
  		if isImporting, err := modelIsImporting(st); err != nil {
  			return nil, errors.Trace(err)
@@ -11,10 +11,9 @@ diff -U 3 -r --no-dereference ./.unpacked-clean/github.com/juju/juju/apiserver/c
  		}
  
  		// If a revision argument is provided, it takes precedence
-Only in ./src/github.com/juju/juju/apiserver: charms.go~
-diff -U 3 -r --no-dereference ./.unpacked-clean/github.com/juju/juju/provider/dummy/environs.go ./src/github.com/juju/juju/provider/dummy/environs.go
---- ./.unpacked-clean/github.com/juju/juju/provider/dummy/environs.go	2016-10-13 14:31:49.000000000 +0000
-+++ ./src/github.com/juju/juju/provider/dummy/environs.go	2016-11-03 13:52:34.827516374 +0000
+diff -U 3 -r --no-dereference /home/ubuntu/fake-juju/initial-unit-tests/2.0.2/.unpacked-clean/github.com/juju/juju/provider/dummy/environs.go /home/ubuntu/fake-juju/initial-unit-tests/2.0.2/src/github.com/juju/juju/provider/dummy/environs.go
+--- /home/ubuntu/fake-juju/initial-unit-tests/2.0.2/.unpacked-clean/github.com/juju/juju/provider/dummy/environs.go	2016-11-11 00:08:09.000000000 +0000
++++ /home/ubuntu/fake-juju/initial-unit-tests/2.0.2/src/github.com/juju/juju/provider/dummy/environs.go	2016-11-30 06:09:26.977210528 +0000
 @@ -643,9 +643,9 @@
  
  // PrecheckInstance is specified in the state.Prechecker interface.
@@ -28,9 +27,9 @@ diff -U 3 -r --no-dereference ./.unpacked-clean/github.com/juju/juju/provider/du
  	return nil
  }
  
-diff -U 3 -r --no-dereference ./.unpacked-clean/github.com/juju/juju/testcharms/charm.go ./src/github.com/juju/juju/testcharms/charm.go
---- ./.unpacked-clean/github.com/juju/juju/testcharms/charm.go	2016-10-13 14:31:49.000000000 +0000
-+++ ./src/github.com/juju/juju/testcharms/charm.go	2016-11-03 13:52:34.827516374 +0000
+diff -U 3 -r --no-dereference /home/ubuntu/fake-juju/initial-unit-tests/2.0.2/.unpacked-clean/github.com/juju/juju/testcharms/charm.go /home/ubuntu/fake-juju/initial-unit-tests/2.0.2/src/github.com/juju/juju/testcharms/charm.go
+--- /home/ubuntu/fake-juju/initial-unit-tests/2.0.2/.unpacked-clean/github.com/juju/juju/testcharms/charm.go	2016-11-11 00:08:09.000000000 +0000
++++ /home/ubuntu/fake-juju/initial-unit-tests/2.0.2/src/github.com/juju/juju/testcharms/charm.go	2016-11-30 06:09:26.978210538 +0000
 @@ -17,7 +17,9 @@
  )
  
@@ -42,9 +41,9 @@ diff -U 3 -r --no-dereference ./.unpacked-clean/github.com/juju/juju/testcharms/
  
  // UploadCharmWithMeta pushes a new charm to the charmstore.
  // The uploaded charm takes the supplied charmURL with metadata.yaml and metrics.yaml
-diff -U 3 -r --no-dereference ./.unpacked-clean/github.com/juju/juju/testing/cert.go ./src/github.com/juju/juju/testing/cert.go
---- ./.unpacked-clean/github.com/juju/juju/testing/cert.go	2016-10-13 14:31:49.000000000 +0000
-+++ ./src/github.com/juju/juju/testing/cert.go	2016-11-03 13:52:34.827516374 +0000
+diff -U 3 -r --no-dereference /home/ubuntu/fake-juju/initial-unit-tests/2.0.2/.unpacked-clean/github.com/juju/juju/testing/cert.go /home/ubuntu/fake-juju/initial-unit-tests/2.0.2/src/github.com/juju/juju/testing/cert.go
+--- /home/ubuntu/fake-juju/initial-unit-tests/2.0.2/.unpacked-clean/github.com/juju/juju/testing/cert.go	2016-11-11 00:08:09.000000000 +0000
++++ /home/ubuntu/fake-juju/initial-unit-tests/2.0.2/src/github.com/juju/juju/testing/cert.go	2016-11-30 06:09:26.979210548 +0000
 @@ -52,7 +52,7 @@
  }
  
@@ -63,9 +62,33 @@ diff -U 3 -r --no-dereference ./.unpacked-clean/github.com/juju/juju/testing/cer
  	var hostnames []string
  	srvCert, srvKey, err := cert.NewServer(CACert, CAKey, time.Now().AddDate(10, 0, 0), hostnames)
  	if err != nil {
-diff -U 3 -r --no-dereference ./.unpacked-clean/gopkg.in/mgo.v2/bson/json.go ./src/gopkg.in/mgo.v2/bson/json.go
---- ./.unpacked-clean/gopkg.in/mgo.v2/bson/json.go	2016-10-13 09:32:16.000000000 -0500
-+++ ./src/gopkg.in/mgo.v2/bson/json.go	2016-11-21 07:55:31.696036251 -0600
+diff -U 3 -r --no-dereference /home/ubuntu/fake-juju/initial-unit-tests/2.0.2/.unpacked-clean/github.com/juju/testing/log.go /home/ubuntu/fake-juju/initial-unit-tests/2.0.2/src/github.com/juju/testing/log.go
+--- /home/ubuntu/fake-juju/initial-unit-tests/2.0.2/.unpacked-clean/github.com/juju/testing/log.go	2016-11-11 00:08:46.000000000 +0000
++++ /home/ubuntu/fake-juju/initial-unit-tests/2.0.2/src/github.com/juju/testing/log.go	2016-11-30 06:09:29.817238914 +0000
+@@ -50,6 +50,9 @@
+ }
+ 
+ func (s *LoggingSuite) TearDownSuite(c *gc.C) {
++	// XXX fake-juju: we don't want this suite to override our logging
++	//     setup.
++	return
+ 	loggo.ResetLogging()
+ }
+ 
+@@ -66,6 +69,10 @@
+ }
+ 
+ func (s *LoggingSuite) setUp(c *gc.C) {
++	// XXX fake-juju: we don't want this suite to override our logging
++	//     setup.
++	return
++
+ 	loggo.ResetLogging()
+ 	// Don't use the default writer for the test logging, which
+ 	// means we can still get logging output from tests that
+diff -U 3 -r --no-dereference /home/ubuntu/fake-juju/initial-unit-tests/2.0.2/.unpacked-clean/gopkg.in/mgo.v2/bson/json.go /home/ubuntu/fake-juju/initial-unit-tests/2.0.2/src/gopkg.in/mgo.v2/bson/json.go
+--- /home/ubuntu/fake-juju/initial-unit-tests/2.0.2/.unpacked-clean/gopkg.in/mgo.v2/bson/json.go	2016-11-11 00:08:13.000000000 +0000
++++ /home/ubuntu/fake-juju/initial-unit-tests/2.0.2/src/gopkg.in/mgo.v2/bson/json.go	2016-11-30 06:09:26.979210548 +0000
 @@ -317,7 +317,8 @@
  func jencInt(v interface{}) ([]byte, error) {
  	n := v.(int)
