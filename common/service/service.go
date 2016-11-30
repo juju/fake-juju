@@ -1,69 +1,101 @@
 package service
 
 import (
+	"fmt"
 	"io"
 
-	gc "gopkg.in/check.v1"
-	corecharm "gopkg.in/juju/charmrepo.v2-unstable"
-
-	"github.com/juju/juju/agent"
-	"github.com/juju/juju/juju/testing"
+	"github.com/juju/juju/api"
+	"github.com/juju/juju/instance"
+	"github.com/juju/juju/network"
 	"github.com/juju/juju/state"
-	"github.com/juju/juju/testing/factory"
+	"github.com/juju/juju/version"
 	"github.com/juju/loggo"
+	"github.com/juju/utils"
+
+	semversion "github.com/juju/version"
 )
 
 // Runtime options for the fake-juju service
 type FakeJujuOptions struct {
-	output io.Writer   // Where to write logs
-	level  loggo.Level // The log level
-	series string      // Default Ubuntu series
-	mongo  bool        // Whether to start mongo, it's off for unit tests
+	Output io.Writer   // Where to write logs
+	Level  loggo.Level // The log level
+	Series string      // Default Ubuntu series
+	Mongo  bool        // Whether to start mongo, it's off for unit tests
 }
 
-// Core fake-juju service.
-//
-// It's implemented as a gocheck test suite because that's the easiest way
-// to re-use all the code that sets up the dummy provider. Ideally such
-// logic should be factored out from testing-related tooling and be made
-// standalone.
+// The core fake-juju service
+func NewFakeJujuService(
+	state *state.State, api api.Connection, options *FakeJujuOptions) *FakeJujuService {
+
+	return &FakeJujuService{
+		state:   state,
+		api:     api,
+		options: options,
+	}
+}
+
 type FakeJujuService struct {
-	testing.JujuConnSuite
-
-	options *FakeJujuOptions
-	state   *FakeJujuState
+	state         *state.State
+	api           api.Connection
+	options       *FakeJujuOptions
+	instanceCount int
 }
 
-func (s *FakeJujuService) SetUpTest(c *gc.C) {
-	s.JujuConnSuite.SetUpTest(c)
+// Main initialization entry point
+func (s *FakeJujuService) Initialize() error {
 
-	// Note that LoggingSuite.SetUpTest (github.com/juju/testing/log.go),
-	// called via s.JujuConnSuite.SetUpTest(), calls loggo.ResetLogging().
-	// So we cannot set up logging before then, since any writer we
-	// register will get removed.  Consequently we lose any logs that get
-	// generated in the SetUpTest() call.
-	setupLogging(s.options.output, s.options.level)
+	// Juju needs internet access to reach the charm store.  This is
+	// necessary to download charmstore charms (e.g. when adding a
+	// service.  In the case of downloading charms, the controller
+	// does not try to download if the charm is already in the database.
+	// So internet access could go back to disabled if we were to add
+	// the charm directly before using any API methods that try to
+	// download it.  Here are some ideas on how to do that:
+	//  * use the API's "upload charm" HTTP endpoint (POST on /charms);
+	//    this requires disabling the prohibition against uploading
+	//    charmstore charms (which we've done already in fake-juju);
+	//    this could be accomplished using txjuju, python-jujuclient,
+	//    or manually with httplib (all have auth complexity)
+	//  * add an "upload-charm" command to fake-juju that forces a
+	//    charmstore charm into the DB
+	//  * add the service with a "local" charm schema and then forcibly
+	//    change the charm's schema to "cs" in the DB
+	// In the meantime, we allow fake-juju to have internet access.
+	// XXX (lp:1639276): Remove this special case.
+	utils.OutgoingAccessAllowed = true
 
-	s.PatchValue(&corecharm.CacheDir, c.MkDir())
-
-	s.state = &FakeJujuState{
-		state:   s.State,
-		api:     s.APIState,
-		options: s.options,
+	ports := s.api.APIHostPorts()
+	ports[0][0].SpaceName = "dummy-provider-network"
+	err := s.state.SetAPIHostPorts(ports)
+	if err != nil {
+		return err
 	}
 
-	err := s.state.Initialize()
-	c.Assert(err, gc.IsNil)
+	config := map[string]interface{}{"default-series": s.options.Series}
+	err = s.state.UpdateModelConfig(config, nil, nil)
+	if err != nil {
+		return err
+	}
 
-	controller := s.Factory.MakeMachine(c, &factory.MachineParams{
-		InstanceId: s.state.NewInstanceId(),
-		Nonce:      agent.BootstrapNonce,
-		Jobs:       []state.MachineJob{state.JobManageModel, state.JobHostUnits},
-		Series:     s.options.series,
-	})
-	err = s.state.InitializeController(controller)
-	c.Assert(err, gc.IsNil)
+	return nil
 }
 
-func (s *FakeJujuService) TestStart(c *gc.C) {
+// Initialize the controller machine (aka machine 0).
+func (s *FakeJujuService) InitializeController(controller *state.Machine) error {
+	currentVersion := version.Current.String()
+
+	agentVersion, err := semversion.ParseBinary(currentVersion + "-xenial-amd64")
+	if err != nil {
+		return err
+	}
+
+	controller.SetAgentVersion(agentVersion)
+
+	address := network.NewScopedAddress("127.0.0.1", network.ScopeCloudLocal)
+	return controller.SetProviderAddresses(address)
+}
+
+func (s *FakeJujuService) NewInstanceId() instance.Id {
+	s.instanceCount += 1
+	return instance.Id(fmt.Sprintf("id-%d", s.instanceCount))
 }

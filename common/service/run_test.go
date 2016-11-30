@@ -1,4 +1,4 @@
-package service
+package service_test
 
 import (
 	"bytes"
@@ -6,43 +6,39 @@ import (
 	gc "gopkg.in/check.v1"
 
 	"github.com/juju/loggo"
+
+	"../service"
 )
 
-// Yes, a fake of the fake!
-type DummyService struct {
-	options *FakeJujuOptions
+type DummySuite struct {
+	options *service.FakeJujuOptions
 	hasRun  bool
 }
 
-func (s *DummyService) TestStart(c *gc.C) {
+func (s *DummySuite) TestStart(c *gc.C) {
 	s.hasRun = true
 }
 
-type FakeJujuRunnerSuite struct {
-}
+type FakeJujuRunnerSuite struct {}
 
-// The FakeJujuRunner.Run method executes the "service", by
-// running the test suite it's implemented as. Logging is
+// The FakeJujuRunner.Run method executes the given gocheck suite. Logging is
 // configured too.
 func (s *FakeJujuRunnerSuite) TestRun(c *gc.C) {
 	output := &bytes.Buffer{}
-	options := &FakeJujuOptions{
-		output: output,
-		level:  loggo.DEBUG,
-		mongo:  false,
+	options := &service.FakeJujuOptions{
+		Output: output,
+		Level:  loggo.DEBUG,
+		Mongo:  false,
 	}
-	service := &DummyService{
+	suite := &DummySuite{
 		options: options,
 	}
-	fake := &FakeJujuRunner{
-		service: gc.Suite(service),
-		options: options,
-	}
-	result := fake.Run()
+	runner := service.NewFakeJujuRunner(gc.Suite(suite), options)
+	result := runner.Run()
 
 	c.Assert(result.Succeeded, gc.Equals, 1)
 	c.Assert(result.RunError, gc.IsNil)
-	c.Assert(service.hasRun, gc.Equals, true)
+	c.Assert(suite.hasRun, gc.Equals, true)
 	c.Assert(
 		bytes.Contains(output.Bytes(), []byte("Starting service")), gc.Equals, true)
 }

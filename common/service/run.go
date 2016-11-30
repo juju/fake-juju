@@ -15,9 +15,9 @@ import (
 )
 
 // Main entry point for running the fake-juju service. It will create
-// a FakeJujuService instance (which is actually a gocheck test suite)
+// a FakeJujuSuite instance (yes, a gocheck test suite, see its docstring)
 // and run it (i.e. invoke its single TestStart test method, which will
-// spin the "service" indefinitely).
+// spin a FakeJujuService indefinitely).
 func RunFakeJuju() {
 
 	series := "xenial"
@@ -26,40 +26,37 @@ func RunFakeJuju() {
 	}
 
 	options := &FakeJujuOptions{
-		output: os.Stdout,
-		level: loggo.INFO,
-		series: series,
-		mongo:  true,
+		Output: os.Stdout,
+		Level:  loggo.INFO,
+		Series: series,
+		Mongo:  true,
 	}
-	service := &FakeJujuService{
+	suite := &FakeJujuSuite{
 		options: options,
 	}
-	runner := &FakeJujuRunner{
-		service: gc.Suite(service),
-		options: options,
-	}
-	result := runner.Run()
+	runner := NewFakeJujuRunner(suite, options)
+	runner.Run()
+}
 
-	if !(result.Succeeded == 1) {
-		log.Infof("Service exited uncleanly: %s", result.RunError.Error())
+func NewFakeJujuRunner(suite interface{}, options *FakeJujuOptions) *FakeJujuRunner {
+	return &FakeJujuRunner{
+		suite:   suite,
+		options: options,
 	}
-	log.Infof("Stopping service")
 }
 
 type FakeJujuRunner struct {
-
-	// A FakeJujuService instance
-	service interface{}
+	suite   interface{} // A FakeJujuSuite instance
 	options *FakeJujuOptions
 }
 
 func (f *FakeJujuRunner) Run() *gc.Result {
 
-	setupLogging(f.options.output, f.options.level)
+	setupLogging(f.options.Output, f.options.Level)
 	log.Infof("Starting service")
 
 	// Conditionally start mongo (we don't want this for unit tests).
-	if f.options.mongo {
+	if f.options.Mongo {
 		certs := coretesting.Certs
 		if err := jujutesting.MgoServer.Start(certs); err != nil {
 			return &gc.Result{RunError: err}
@@ -71,5 +68,17 @@ func (f *FakeJujuRunner) Run() *gc.Result {
 		Output: ioutil.Discard, // We don't want any output from gocheck
 		Filter: "TestStart",
 	}
-	return gc.Run(f.service, conf)
+	result := gc.Run(f.suite, conf)
+
+	if !(result.Succeeded == 1) {
+		message := "No error message"
+		if result.RunError != nil {
+			message = result.RunError.Error()
+		}
+		log.Infof("Service exited uncleanly: %s", message)
+	}
+	log.Infof("Stopping service")
+
+	return result
+
 }
