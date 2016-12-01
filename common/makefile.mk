@@ -26,6 +26,10 @@ build: $(JUJU_TARBALL) $(JUJU_PATCH)
 	patch -p0 < $(JUJU_PATCH)
 	GOPATH=$(GO_PATH) PATH=$(PATH) go build
 
+.PHONY: unit-test
+unit-test: $(JUJU_TARBALL) $(JUJU_PATCH)
+	GOPATH=$(GO_PATH) go test ./service -gocheck.v
+
 .PHONY: test
 test: $(JUJU_VERSION)
 	cd .. && JUJU_VERSION=$(JUJU_VERSION) python3 -m unittest tests.test_fake

@@ -1,0 +1,101 @@
+diff -U 3 -r --no-dereference .unpacked-clean/github.com/juju/juju/apiserver/charms.go src/github.com/juju/juju/apiserver/charms.go
+--- .unpacked-clean/github.com/juju/juju/apiserver/charms.go	2016-11-11 00:08:09.000000000 +0000
++++ src/github.com/juju/juju/apiserver/charms.go	2016-11-30 06:09:26.975210508 +0000
+@@ -284,7 +284,8 @@
+ 		if isImporting, err := modelIsImporting(st); err != nil {
+ 			return nil, errors.Trace(err)
+ 		} else if !isImporting {
+-			return nil, errors.New("cs charms may only be uploaded during model migration import")
++			// fake-juju allows uploading "charmstore" charms.
++			//return nil, errors.New("cs charms may only be uploaded during model migration import")
+ 		}
+ 
+ 		// If a revision argument is provided, it takes precedence
+diff -U 3 -r --no-dereference .unpacked-clean/github.com/juju/juju/provider/dummy/environs.go src/github.com/juju/juju/provider/dummy/environs.go
+--- .unpacked-clean/github.com/juju/juju/provider/dummy/environs.go	2016-11-11 00:08:09.000000000 +0000
++++ src/github.com/juju/juju/provider/dummy/environs.go	2016-11-30 06:09:26.977210528 +0000
+@@ -643,9 +643,9 @@
+ 
+ // PrecheckInstance is specified in the state.Prechecker interface.
+ func (*environ) PrecheckInstance(series string, cons constraints.Value, placement string) error {
+-	if placement != "" && placement != "valid" {
+-		return fmt.Errorf("%s placement is invalid", placement)
+-	}
++//	if placement != "" && placement != "valid" {
++//		return fmt.Errorf("%s placement is invalid", placement)
++//	}
+ 	return nil
+ }
+ 
+diff -U 3 -r --no-dereference .unpacked-clean/github.com/juju/juju/testcharms/charm.go src/github.com/juju/juju/testcharms/charm.go
+--- .unpacked-clean/github.com/juju/juju/testcharms/charm.go	2016-11-11 00:08:09.000000000 +0000
++++ src/github.com/juju/juju/testcharms/charm.go	2016-11-30 06:09:26.978210538 +0000
+@@ -17,7 +17,9 @@
+ )
+ 
+ // Repo provides access to the test charm repository.
+-var Repo = testing.NewRepo("charm-repo", "quantal")
++// XXX fake-juju: avoid crashing because the charm-repo dir is not there
++//var Repo = testing.NewRepo("charm-repo", "quantal")
++var Repo = &testing.Repo{}
+ 
+ // UploadCharmWithMeta pushes a new charm to the charmstore.
+ // The uploaded charm takes the supplied charmURL with metadata.yaml and metrics.yaml
+diff -U 3 -r --no-dereference .unpacked-clean/github.com/juju/juju/testing/cert.go src/github.com/juju/juju/testing/cert.go
+--- .unpacked-clean/github.com/juju/juju/testing/cert.go	2016-11-11 00:08:09.000000000 +0000
++++ src/github.com/juju/juju/testing/cert.go	2016-11-30 06:09:26.979210548 +0000
+@@ -52,7 +52,7 @@
+ }
+ 
+ func mustNewCA() (string, string) {
+-	cert.KeyBits = 512
++	cert.KeyBits = 1024
+ 	caCert, caKey, err := cert.NewCA("juju testing", "1234-ABCD-IS-NOT-A-REAL-UUID", time.Now().AddDate(10, 0, 0))
+ 	if err != nil {
+ 		panic(err)
+@@ -61,7 +61,7 @@
+ }
+ 
+ func mustNewServer() (string, string) {
+-	cert.KeyBits = 512
++	cert.KeyBits = 1024
+ 	var hostnames []string
+ 	srvCert, srvKey, err := cert.NewServer(CACert, CAKey, time.Now().AddDate(10, 0, 0), hostnames)
+ 	if err != nil {
+diff -U 3 -r --no-dereference .unpacked-clean/github.com/juju/testing/log.go src/github.com/juju/testing/log.go
+--- .unpacked-clean/github.com/juju/testing/log.go	2016-11-11 00:08:46.000000000 +0000
++++ src/github.com/juju/testing/log.go	2016-11-30 06:09:29.817238914 +0000
+@@ -50,6 +50,9 @@
+ }
+ 
+ func (s *LoggingSuite) TearDownSuite(c *gc.C) {
++	// XXX fake-juju: we don't want this suite to override our logging
++	//     setup.
++	return
+ 	loggo.ResetLogging()
+ }
+ 
+@@ -66,6 +69,10 @@
+ }
+ 
+ func (s *LoggingSuite) setUp(c *gc.C) {
++	// XXX fake-juju: we don't want this suite to override our logging
++	//     setup.
++	return
++
+ 	loggo.ResetLogging()
+ 	// Don't use the default writer for the test logging, which
+ 	// means we can still get logging output from tests that
+diff -U 3 -r --no-dereference .unpacked-clean/gopkg.in/mgo.v2/bson/json.go src/gopkg.in/mgo.v2/bson/json.go
+--- .unpacked-clean/gopkg.in/mgo.v2/bson/json.go	2016-11-11 00:08:13.000000000 +0000
++++ src/gopkg.in/mgo.v2/bson/json.go	2016-11-30 06:09:26.979210548 +0000
+@@ -317,7 +317,8 @@
+ func jencInt(v interface{}) ([]byte, error) {
+ 	n := v.(int)
+ 	f := `{"$numberLong":"%d"}`
+-	if n <= 1<<53 {
++	// fake-juju apply https://github.com/go-mgo/mgo/pull/311
++	if int64(n) <= 1<<53 {
+ 		f = `%d`
+ 	}
+ 	return fbytes(f, n), nil
