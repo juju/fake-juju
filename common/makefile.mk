@@ -1,9 +1,10 @@
 GO_VERSION = 1.6
+GO = /usr/lib/go-$(GO_VERSION)/bin/go
 GO_PATH = $(CURDIR)
 
 JUJU_VERSION = $(shell basename $(CURDIR))
 JUJU_MAJOR = $(shell echo $(JUJU_VERSION) | cut -f1 -d.)
-JUJU_MAJOR_MINOR = $(shell (echo $(JUJU_VERSION) | cut -f 1,2 -d .))
+JUJU_MAJOR_MINOR = $(shell (echo $(JUJU_VERSION) | cut -f 1,2 -d . | cut -f 1 -d -))
 JUJU_PATCH = juju-core.patch
 JUJU_SRC = $(GO_PATH)/src
 JUJU_UNPACKED_CLEAN = $(GO_PATH)/.unpacked-clean
@@ -24,11 +25,11 @@ build: $(JUJU_TARBALL) $(JUJU_PATCH)
 	rm -rf $(JUJU_SRC)  # Go doesn't play nice with existing files.
 	tar --strip=1 -z -xf $(JUJU_TARBALL)
 	patch -p0 < $(JUJU_PATCH)
-	GOPATH=$(GO_PATH) PATH=$(PATH) go build
+	GOPATH=$(GO_PATH) $(GO) build
 
 .PHONY: unit-test
 unit-test: $(JUJU_TARBALL) $(JUJU_PATCH)
-	GOPATH=$(GO_PATH) go test ./service -gocheck.v
+	GOPATH=$(GO_PATH) $(GO) test ./service -gocheck.v
 
 .PHONY: test
 test: $(JUJU_VERSION)
@@ -58,4 +59,4 @@ $(JUJU_UNPACKED_CLEAN): $(JUJU_TARBALL)
 	tar -C $(JUJU_UNPACKED_CLEAN) --strip=2 -z -xf $(JUJU_TARBALL)
 
 $(JUJU_VERSION):
-	GOPATH=$(GO_PATH) PATH=$(PATH) go build
+	GOPATH=$(GO_PATH) $(GO) build
