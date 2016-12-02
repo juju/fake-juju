@@ -1,0 +1,21 @@
+language: go
+
+services:
+  - mongodb
+
+addons:
+  apt:
+    sources:
+      - mongodb-3.0-precise
+    packages:
+      - mongodb-org-server
+      - python3
+
+go:
+  - 1.6
+
+env:
+  global:
+    - GO=go
+    - JUJU_MONGOD=/usr/bin/mongod
+    - SKIP_FUNCTIONAL_TESTS=1

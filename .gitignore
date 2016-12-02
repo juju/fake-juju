@@ -1,3 +1,5 @@
 juju-core_*.tar.gz
 */src
 __pycache__
+*/fake-jujud
+*/pkg
