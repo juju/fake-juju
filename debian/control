@@ -26,7 +26,7 @@ Description: A fake implentation of Juju using the dummy provider.
  that the provider will be a dummy one.
 
 Package: python-fakejuju
-Architecture: any
+Architecture: all
 Depends: ${python:Depends}, ${misc:Depends}, ${extra:Depends}, ${shlibs:Depends},
          python-fixtures,
          python-testtools,
