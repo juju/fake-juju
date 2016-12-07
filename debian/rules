@@ -2,24 +2,18 @@
 
 export PYBUILD_NAME=fakejuju
 
-dh_extra_flags = -pfake-juju -ppython-fakejuju
-
 %:
 	dh $@
-	dh $@ --sourcedir=python --with python2 --buildsystem=pybuild
 
-dh_override_build_arch:
-	make build
+override_dh_auto_build-indep:
+	dh_auto_build --sourcedir=python --buildsystem=pybuild
 
-dh_override_build_indep:
-	dh build --sourcedir=python --with python2 --buildsystem=pybuild
+override_dh_auto_install-indep:
+	dh_auto_install --sourcedir=python --buildsystem=pybuild
 
-dh_override_install_arch:
-	make install
-
-dh_override_install_indep:
-	dh install --sourcedir=python --with python2 --buildsystem=pybuild
-
+override_dh_auto_clean:
+	dh_auto_clean
+	dh_auto_clean --sourcedir=python --buildsystem=pybuild
 
 override_dh_auto_test:
 	# Don't run tests
