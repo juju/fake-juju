@@ -25,7 +25,7 @@ build: $(JUJU_TARBALL) $(JUJU_PATCH)
 	rm -rf $(JUJU_SRC)  # Go doesn't play nice with existing files.
 	tar --strip=1 -z -xf $(JUJU_TARBALL)
 	patch -p0 < $(JUJU_PATCH)
-	GOPATH=$(GO_PATH) $(GO) build -v
+	GOPATH=$(GO_PATH) $(GO) build -v -i fake-jujud.go
 
 .PHONY: unit-test
 unit-test: $(JUJU_TARBALL) $(JUJU_PATCH)
@@ -41,7 +41,7 @@ endif
 
 .PHONY: install
 install: $(JUJU_VERSION)
-	install -D $(JUJU_VERSION) $(JUJU_INSTALLED)
+	install -D fake-jujud $(JUJU_INSTALLED)
 
 .PHONY: clean
 clean:
