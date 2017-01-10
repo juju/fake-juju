@@ -1,0 +1,7 @@
+pbr
+txjuju>=0.9.0a2
+fixtures
+testtools
+Twisted
+PyYAML
+

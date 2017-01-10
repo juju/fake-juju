@@ -4,6 +4,7 @@ JUJUCLIENT_DOWNLOADS = $(shell pwd)/tests/jujuclient-archive
 JUJUCLIENT_REQ = $(JUJUCLIENT_DOWNLOADS)/requirements
 
 PYTHON = python
+TOX ?= tox
 
 .PHONY: all
 all: build
@@ -26,15 +27,20 @@ clean:
 	    $(MAKE) -C $$VERSION clean; \
 	done
 
-.PHONY: test py-test
+.PHONY: test
 test: build
+	$(MAKE) go-test
+	$(MAKE) py-test
+
+.PHONY: go-test
+go-test:
 	# Use xargs here so that we don't throw away the return codes, and
 	# correctly fail if any of the tests fail
 	@echo -n $(JUJU_VERSIONS) | xargs -t -d' ' -I {} $(MAKE) -C {} test
 
 .PHONY: py-test
 py-test:
-	$(PYTHON) -m unittest discover -t python -s python/fakejuju
+	cd python && $(TOX)
 
 .PHONY: ci-test
 ci-test:

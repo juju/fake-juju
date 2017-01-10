@@ -44,6 +44,7 @@ listed here:
     format: "unit-<ID>"  (e.g. unit-mysql/0)
 
 """
+from pbr.version import VersionInfo
 
 from .fakejuju import get_filename, set_envvars, FakeJuju
 
@@ -54,7 +55,10 @@ __all__ = [
     "FakeJuju",
     ]
 
-__version__ = "0.9.0b1"
+
+_v = VersionInfo("fakejuju").semantic_version()
+__version__ = _v.release_string()
+version_info = _v.version_tuple()
 
 
 def get_bootstrap_spec(name, admin_secret=None):

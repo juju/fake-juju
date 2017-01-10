@@ -3,3 +3,6 @@ juju-core_*.tar.gz
 __pycache__
 */fake-jujud
 */pkg
+*.pyc
+.tox
+*.egg-info

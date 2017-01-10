@@ -17,5 +17,10 @@ go:
 env:
   global:
     - GO=go
+    - TOX=~/.local/bin/tox
     - JUJU_MONGOD=/usr/bin/mongod
     - SKIP_FUNCTIONAL_TESTS=1
+
+install: pip install --user tox
+script:
+  - make test
