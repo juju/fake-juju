@@ -2,6 +2,9 @@
 
 export PYBUILD_NAME=fakejuju
 
+# This is needed because of https://bugs.launchpad.net/pbr/+bug/1637729
+export PBR_VERSION=$(shell dpkg-parsechangelog -SVersion | sed -e 's/[-].*//')
+
 %:
 	dh $@
 
