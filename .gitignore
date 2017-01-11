@@ -2,6 +2,7 @@ juju-core_*.tar.gz
 */src
 __pycache__
 */fake-jujud
+*/fake-juju
 */pkg
 *.pyc
 .tox

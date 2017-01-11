@@ -22,10 +22,19 @@ JUJU_TARBALL_URL=https://launchpad.net/$(JUJU_PROJECT)/$(JUJU_MAJOR_MINOR)/$(JUJ
 
 .PHONY: build
 build: $(JUJU_TARBALL) $(JUJU_PATCH)
+
 	rm -rf $(JUJU_SRC)  # Go doesn't play nice with existing files.
+
+	# Extract the original tarball, apply the fake-juju patch and create
+	# synlinks in the original tree for the additional fake-juju sources.
 	tar --strip=1 -z -xf $(JUJU_TARBALL)
 	patch -p0 < $(JUJU_PATCH)
+	for name in $(shell find ../common/core/ -name "*.go"); \
+		do ln -s $$(pwd)/$$name $(JUJU_SRC)/$$(echo $$name | cut -d / -f 4-); \
+	done
+
 	GOPATH=$(GO_PATH) $(GO) build -v -i fake-jujud.go
+	GOPATH=$(GO_PATH) $(GO) build -v -i fake-juju.go
 
 .PHONY: unit-test
 unit-test: $(JUJU_TARBALL) $(JUJU_PATCH)

@@ -11,9 +11,24 @@ diff -U 3 -r --no-dereference .unpacked-clean/github.com/juju/juju/apiserver/cha
  		}
  
  		// If a revision argument is provided, it takes precedence
+Only in src/github.com/juju/juju/cmd/juju/commands: bootstrap-fakejuju.go
+diff -U 3 -r --no-dereference .unpacked-clean/github.com/juju/juju/cmd/juju/commands/bootstrap.go src/github.com/juju/juju/cmd/juju/commands/bootstrap.go
+--- .unpacked-clean/github.com/juju/juju/cmd/juju/commands/bootstrap.go	2016-11-11 00:08:09.000000000 +0000
++++ src/github.com/juju/juju/cmd/juju/commands/bootstrap.go	2017-01-07 19:03:04.505519940 +0000
+@@ -312,6 +312,10 @@
+ // a juju in that environment if none already exists. If there is as yet no environments.yaml file,
+ // the user is informed how to create one.
+ func (c *bootstrapCommand) Run(ctx *cmd.Context) (resultErr error) {
++	// XXX fake-juju: start patch
++	return c.fakeJujuBootstrap()
++	// XXX fake-juju: end patch
++
+ 	if err := c.parseConstraints(ctx); err != nil {
+ 		return err
+ 	}
 diff -U 3 -r --no-dereference .unpacked-clean/github.com/juju/juju/provider/dummy/environs.go src/github.com/juju/juju/provider/dummy/environs.go
 --- .unpacked-clean/github.com/juju/juju/provider/dummy/environs.go	2016-11-11 00:08:09.000000000 +0000
-+++ src/github.com/juju/juju/provider/dummy/environs.go	2016-11-30 06:09:26.977210528 +0000
++++ src/github.com/juju/juju/provider/dummy/environs.go        2016-11-30 06:09:26.977210528 +0000
 @@ -643,9 +643,9 @@
  
  // PrecheckInstance is specified in the state.Prechecker interface.
