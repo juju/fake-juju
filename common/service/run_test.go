@@ -28,7 +28,7 @@ func (s *FakeJujuRunnerSuite) TestRun(c *gc.C) {
 	options := &service.FakeJujuOptions{
 		Output: output,
 		Level:  loggo.DEBUG,
-		Mongo:  false,
+		Mongo: -1,  // We don't need any MongoDB for this test
 	}
 	suite := &DummySuite{
 		options: options,

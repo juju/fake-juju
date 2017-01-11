@@ -3,6 +3,7 @@
 package service
 
 import (
+	"flag"
 	"io/ioutil"
 	"os"
 
@@ -18,24 +19,34 @@ import (
 // a FakeJujuSuite instance (yes, a gocheck test suite, see its docstring)
 // and run it (i.e. invoke its single TestStart test method, which will
 // spin a FakeJujuService indefinitely).
-func RunFakeJuju() {
+func RunFakeJuju() int {
 
-	series := "xenial"
-	if os.Getenv("DEFAULT_SERIES") != "" {
-		series = os.Getenv("DEFAULT_SERIES")
-	}
+	// Command line options
+	flags := flag.NewFlagSet("fake-jujud", flag.ExitOnError)
+	mongo := flags.Int("mongo", 0, "Optional external MongoDB port to use (default is to spawn a new instance on a random free port)")
+	cert := flags.String("cert", "/usr/share/fake-juju/cert", "Certificate directory")
+	series := flags.String("series", "xenial", "Ubuntu series")
+	flags.Parse(os.Args[1:])
 
 	options := &FakeJujuOptions{
 		Output: os.Stdout,
+		Series: *series,
+		Mongo:  *mongo,
+		Cert:   *cert,
 		Level:  loggo.INFO,
-		Series: series,
-		Mongo:  true,
 	}
 	suite := &FakeJujuSuite{
 		options: options,
 	}
+
 	runner := NewFakeJujuRunner(suite, options)
-	runner.Run()
+	result := runner.Run()
+
+	if result.Succeeded == 1 {
+		return 0
+	} else {
+		return 1
+	}
 }
 
 func NewFakeJujuRunner(suite interface{}, options *FakeJujuOptions) *FakeJujuRunner {
@@ -55,10 +66,23 @@ func (f *FakeJujuRunner) Run() *gc.Result {
 	setupLogging(f.options.Output, f.options.Level)
 	log.Infof("Starting service")
 
-	// Conditionally start mongo (we don't want this for unit tests).
-	if f.options.Mongo {
-		certs := coretesting.Certs
-		if err := jujutesting.MgoServer.Start(certs); err != nil {
+	if f.options.Mongo > 0 { // Use an external MongoDB instance
+		log.Infof("Using external MongoDB on port %d", f.options.Mongo)
+
+		// Set the certificates that the service will use
+		err := SetCerts(f.options.Cert)
+		if err != nil {
+			result := &gc.Result{RunError: err}
+			logResult(result)
+			return result
+		}
+		jujutesting.SetExternalMgoServer(
+			"localhost", f.options.Mongo, coretesting.Certs)
+	} else if f.options.Mongo == 0 { // Start a dedicated MongoDB instance
+		log.Infof("Starting dedicated MongoDB instance")
+
+		err := jujutesting.MgoServer.Start(coretesting.Certs)
+		if err != nil {
 			return &gc.Result{RunError: err}
 		}
 		defer jujutesting.MgoServer.Destroy()
@@ -70,15 +94,22 @@ func (f *FakeJujuRunner) Run() *gc.Result {
 	}
 	result := gc.Run(f.suite, conf)
 
-	if !(result.Succeeded == 1) {
-		message := "No error message"
-		if result.RunError != nil {
-			message = result.RunError.Error()
-		}
-		log.Infof("Service exited uncleanly: %s", message)
-	}
-	log.Infof("Stopping service")
+	logResult(result)
 
 	return result
 
+}
+
+// Log a summary of the service run
+func logResult(result *gc.Result) {
+
+	if !(result.Succeeded == 1) {
+		message := "Unknown error"
+		if result.RunError != nil {
+			message = result.RunError.Error()
+		}
+		log.Infof("Service finished uncleanly: %s", message)
+	} else {
+		log.Infof("Service finished cleanly")
+	}
 }

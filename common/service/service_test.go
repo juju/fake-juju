@@ -25,7 +25,9 @@ type FakeJujuServiceSuite struct {
 func (s *FakeJujuServiceSuite) SetUpTest(c *gc.C) {
 	s.JujuConnSuite.SetUpTest(c)
 
-	options := &service.FakeJujuOptions{}
+	options := &service.FakeJujuOptions{
+		Mongo: -1,  // Use the MongoDB instance that the suite will setup
+	}
 	s.service = service.NewFakeJujuService(s.State, s.APIState, options)
 }
 

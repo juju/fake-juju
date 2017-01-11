@@ -19,8 +19,14 @@ import (
 type FakeJujuOptions struct {
 	Output io.Writer   // Where to write logs
 	Level  loggo.Level // The log level
-	Series string      // Default Ubuntu series
-	Mongo  bool        // Whether to start mongo, it's off for unit tests
+
+	// MongoDB port to connect to (on localhost). If set to 0,
+	// a dedicated MongoDB child process will be spawned. If
+	// set to -1, no setup will be done at all (for tests)
+	Mongo int
+
+	Cert   string // Path to the directory holding the certificates to use
+	Series string // Default Ubuntu series
 }
 
 // The core fake-juju service

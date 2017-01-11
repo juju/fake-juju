@@ -6,8 +6,8 @@ JUJU_VERSION = $(shell basename $(CURDIR))
 JUJU_MAJOR = $(shell echo $(JUJU_VERSION) | cut -f1 -d.)
 JUJU_MAJOR_MINOR = $(shell (echo $(JUJU_VERSION) | cut -f 1,2 -d . | cut -f 1 -d -))
 JUJU_PATCH = juju-core.patch
-JUJU_SRC = $(GO_PATH)/src
-JUJU_UNPACKED_CLEAN = $(GO_PATH)/.unpacked-clean
+JUJU_SRC = src
+JUJU_UNPACKED_CLEAN = .unpacked-clean
 JUJU_INSTALLDIR = $(DESTDIR)/usr/bin
 JUJU_INSTALLED = $(JUJU_INSTALLDIR)/fake-juju-$(JUJU_VERSION)
 
@@ -63,4 +63,4 @@ $(JUJU_UNPACKED_CLEAN): $(JUJU_TARBALL)
 	tar -C $(JUJU_UNPACKED_CLEAN) --strip=2 -z -xf $(JUJU_TARBALL)
 
 $(JUJU_VERSION):
-	GOPATH=$(GO_PATH) $(GO) build -v
+	GOPATH=$(GO_PATH) $(GO) build -v fake-jujud.go
