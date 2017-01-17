@@ -53,4 +53,4 @@ class FakeJuju(Service):
     def __init__(self, mongo_port, fake_jujud=FAKE_JUJUD, **kwargs):
         command = [fake_jujud, "-mongo", str(mongo_port), "-cert", CERT]
         super(FakeJuju, self).__init__(command, **kwargs)
-        self.expectOutput("preferred public address changed from")
+        self.expectOutput("Starting main loop")

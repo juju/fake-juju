@@ -10,35 +10,28 @@ import (
 	"../service"
 )
 
-type DummySuite struct {
-	options *service.FakeJujuOptions
-	hasRun  bool
-}
+type FakeJujuRunnerSuite struct{}
 
-func (s *DummySuite) TestStart(c *gc.C) {
-	s.hasRun = true
-}
-
-type FakeJujuRunnerSuite struct {}
-
-// The FakeJujuRunner.Run method executes the given gocheck suite. Logging is
-// configured too.
+// The FakeJujuRunner.Run method sets up logging and starts the service main
+// loop, which can be terminated with the Stop method.
 func (s *FakeJujuRunnerSuite) TestRun(c *gc.C) {
 	output := &bytes.Buffer{}
 	options := &service.FakeJujuOptions{
 		Output: output,
 		Level:  loggo.DEBUG,
-		Mongo: -1,  // We don't need any MongoDB for this test
+		Mongo:  -1, // We don't need any MongoDB for this test
 	}
-	suite := &DummySuite{
-		options: options,
-	}
-	runner := service.NewFakeJujuRunner(gc.Suite(suite), options)
-	result := runner.Run()
 
+	// We don't pass an actual FakeJujuSuite here, since we're only going
+	// to start the main loop.
+	runner := service.NewFakeJujuRunner(nil, options)
+	runner.Run()
+	runner.Stop()
+	result := runner.Wait()
+
+	c.Assert(result.String(), gc.Equals, "OK: 1 passed")
 	c.Assert(result.Succeeded, gc.Equals, 1)
 	c.Assert(result.RunError, gc.IsNil)
-	c.Assert(suite.hasRun, gc.Equals, true)
 	c.Assert(
 		bytes.Contains(output.Bytes(), []byte("Starting service")), gc.Equals, true)
 }

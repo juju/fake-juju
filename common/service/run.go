@@ -6,10 +6,11 @@ import (
 	"flag"
 	"io/ioutil"
 	"os"
-
-	gc "gopkg.in/check.v1"
+	"os/signal"
+	"syscall"
 
 	"github.com/juju/loggo"
+	gc "gopkg.in/check.v1"
 
 	coretesting "github.com/juju/juju/testing"
 	jujutesting "github.com/juju/testing"
@@ -40,7 +41,8 @@ func RunFakeJuju() int {
 	}
 
 	runner := NewFakeJujuRunner(suite, options)
-	result := runner.Run()
+	runner.Run()
+	result := runner.Wait()
 
 	if result.Succeeded == 1 {
 		return 0
@@ -49,19 +51,37 @@ func RunFakeJuju() int {
 	}
 }
 
-func NewFakeJujuRunner(suite interface{}, options *FakeJujuOptions) *FakeJujuRunner {
+func NewFakeJujuRunner(suite *FakeJujuSuite, options *FakeJujuOptions) *FakeJujuRunner {
 	return &FakeJujuRunner{
-		suite:   suite,
-		options: options,
+		suite:    suite,
+		options:  options,
+		commands: make(chan *command, 1),
+		result:   make(chan *gc.Result, 1),
 	}
 }
 
 type FakeJujuRunner struct {
-	suite   interface{} // A FakeJujuSuite instance
+	suite   *FakeJujuSuite
 	options *FakeJujuOptions
+
+	// Control channel for sending commands to the main loop, for example
+	// the "bootstrap" command will trigger new iterations in the main
+	// loop (i.e. a new "bootstrap" process).
+	commands chan *command
+
+	// Channel for signalling that the main loop has terminated
+	result chan *gc.Result
 }
 
-func (f *FakeJujuRunner) Run() *gc.Result {
+// Perform some setup tasks (logging, mongo, control plane API) and
+// then start the main loop in a goroutine. The main loop (or the
+// setup phase, in case of problems) will signal termination via the
+// FakeJujuRunner.result channel, which will be sent a *gc.Result with
+// information about whether the service completed cleanly or not.
+//
+// Consumer code will then typically invoke FakeJujuRunner.Wait() to
+// wait for the main loop to terminate and gather such exit result.
+func (f *FakeJujuRunner) Run() {
 
 	setupLogging(f.options.Output, f.options.Level)
 	log.Infof("Starting service")
@@ -72,9 +92,8 @@ func (f *FakeJujuRunner) Run() *gc.Result {
 		// Set the certificates that the service will use
 		err := SetCerts(f.options.Cert)
 		if err != nil {
-			result := &gc.Result{RunError: err}
-			logResult(result)
-			return result
+			f.result <- &gc.Result{RunError: err}
+			return
 		}
 		jujutesting.SetExternalMgoServer(
 			"localhost", f.options.Mongo, coretesting.Certs)
@@ -83,19 +102,73 @@ func (f *FakeJujuRunner) Run() *gc.Result {
 
 		err := jujutesting.MgoServer.Start(coretesting.Certs)
 		if err != nil {
-			return &gc.Result{RunError: err}
+			f.result <- &gc.Result{RunError: err}
+			return
 		}
 		defer jujutesting.MgoServer.Destroy()
 	}
 
 	conf := &gc.RunConf{
 		Output: ioutil.Discard, // We don't want any output from gocheck
-		Filter: "TestStart",
+		Filter: "TestMainLoop",
 	}
-	result := gc.Run(f.suite, conf)
 
+	go func() {
+		result := gc.Run(f, conf)
+		f.result <- result
+	}()
+}
+
+// Main control loop of the fake-jujud service. It's prefixed with "Test"
+// only because we need to convince the gocheck package that this is
+// a test method, and thus have it invoked with a reference to a gc.C
+// instance (that we'll use to setup/teardown our FakeJujuSuite instance).
+func (f *FakeJujuRunner) TestMainLoop(c *gc.C) {
+
+	log.Infof("Starting main loop")
+
+	terminate := make(chan os.Signal, 2)
+	signal.Notify(terminate, os.Interrupt, syscall.SIGTERM)
+
+	// Process commands, typically coming from the control plane API.
+	for {
+		stop := false
+
+		var err error
+		var command *command
+
+		select {
+		case <-terminate:
+		case command = <-f.commands:
+		}
+		if command == nil {
+			// This means we either received a signal, let's
+			// exit.
+			f.Stop()
+			continue
+		}
+
+		if command.code == commandCodeStop {
+			log.Infof("Terminating service")
+			stop = true
+		}
+		command.done <- err
+
+		if stop {
+			break
+		}
+	}
+}
+
+// Stop the main loop.
+func (f *FakeJujuRunner) Stop() {
+	f.commands <- newCommand(commandCodeStop)
+}
+
+// Wait for the main loop to complete and return the result.
+func (f *FakeJujuRunner) Wait() *gc.Result {
+	result := <-f.result
 	logResult(result)
-
 	return result
 
 }
