@@ -46,11 +46,22 @@ class JujuMongoDB(MongoDB):
 
 
 class FakeJuju(Service):
-    """
-    Spawn a fake-juju process, pointing the given mongodb port.
-    """
+    """Spawn a fake-juju process, pointing to the given mongodb port."""
 
-    def __init__(self, mongo_port, fake_jujud=FAKE_JUJUD, **kwargs):
-        command = [fake_jujud, "-mongo", str(mongo_port), "-cert", CERT]
+    def __init__(self, mongo_port, binary=FAKE_JUJUD, port=17099, **kwargs):
+        """
+        :param mongo_port: Port of the MongoDB instance that this fake-jujud
+            process should use.
+        :param binary: Path to the fake-jujud binary to spawn.
+        :param port: Port that the fake juju API server will listen to.
+        """
+        command = [
+            binary, "-mongo", str(mongo_port), "-cert", CERT,
+            "-port", str(port)]
         super(FakeJuju, self).__init__(command, **kwargs)
         self.expectOutput("Starting main loop")
+        self.expectPort(port + 1)  # This is the control-plan API port
+
+    @property
+    def port(self):
+        return self.protocol.expectedPort

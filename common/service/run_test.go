@@ -20,6 +20,7 @@ func (s *FakeJujuRunnerSuite) TestRun(c *gc.C) {
 		Output: output,
 		Level:  loggo.DEBUG,
 		Mongo:  -1, // We don't need any MongoDB for this test
+		Port:   12345,
 	}
 
 	// We don't pass an actual FakeJujuSuite here, since we're only going

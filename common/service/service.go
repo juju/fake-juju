@@ -25,6 +25,7 @@ type FakeJujuOptions struct {
 	// set to -1, no setup will be done at all (for tests)
 	Mongo int
 
+	Port   int    // Port for the API server
 	Cert   string // Path to the directory holding the certificates to use
 	Series string // Default Ubuntu series
 }

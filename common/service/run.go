@@ -12,20 +12,40 @@ import (
 	"github.com/juju/loggo"
 	gc "gopkg.in/check.v1"
 
+	"github.com/juju/juju/provider/dummy"
+
 	coretesting "github.com/juju/juju/testing"
 	jujutesting "github.com/juju/testing"
 )
 
-// Main entry point for running the fake-juju service. It will create
-// a FakeJujuSuite instance (yes, a gocheck test suite, see its docstring)
-// and run it (i.e. invoke its single TestStart test method, which will
-// spin a FakeJujuService indefinitely).
+// Main entry point for running the fake-juju service. It will:
+//
+// - Create FakeJujuSuite instance with suitable parameters (yes, a
+//   gocheck test suite, see its docstring). Its role is to set up
+//   and tear down a controller backed by the "dummy" provider (see
+//   the github.com/juju/juju/provider/dummy package).
+//
+// - Start an HTTP server serving a "control plane" API for
+//   controlling fake-juju itself.
+//
+// - When a 'bootstrap' request is received by the control plane API, kick
+//   off a run of our FakeJujuSuite instance, which will in turn create a
+//   new controller and start a juju API server for it.
+//
+// - When a 'destroy' request is received by the control plan API, terminate
+//   the FakeJujuSuite, which will stop the API server and clear the database
+//   state.
+//
+// Additional control plane API endpoints can be used to further control
+// the fake-jujud service, for example by requesting some units or machines
+// to simulate certain errors.
 func RunFakeJuju() int {
 
 	// Command line options
 	flags := flag.NewFlagSet("fake-jujud", flag.ExitOnError)
 	mongo := flags.Int("mongo", 0, "Optional external MongoDB port to use (default is to spawn a new instance on a random free port)")
 	cert := flags.String("cert", "/usr/share/fake-juju/cert", "Certificate directory")
+	port := flags.Int("port", 17099, "The port the API server will listent to")
 	series := flags.String("series", "xenial", "Ubuntu series")
 	flags.Parse(os.Args[1:])
 
@@ -35,6 +55,7 @@ func RunFakeJuju() int {
 		Mongo:  *mongo,
 		Cert:   *cert,
 		Level:  loggo.INFO,
+		Port:   *port,
 	}
 	suite := &FakeJujuSuite{
 		options: options,
@@ -108,6 +129,23 @@ func (f *FakeJujuRunner) Run() {
 		defer jujutesting.MgoServer.Destroy()
 	}
 
+	if f.options.Mongo != -1 {
+		// Configure the test API server to listen to this port (the server
+		// will be started only at "bootstrap" time, see TestMainLoop()).
+		//
+		// Note that unit tests will set f.options.Mongo to -1, because
+		// we want to let the JujuConnSuite test machinery to handle
+		// the API server and not set a fixed port.
+		dummy.SetAPIPort(f.options.Port)
+	}
+
+	// Start the control-plane API
+	if err := f.serveControlPlaneAPI(); err != nil {
+		f.result <- &gc.Result{RunError: err}
+		return
+	}
+
+	// Start the main loop, waiting for 'bootstrap' commands
 	conf := &gc.RunConf{
 		Output: ioutil.Discard, // We don't want any output from gocheck
 		Filter: "TestMainLoop",
@@ -170,7 +208,6 @@ func (f *FakeJujuRunner) Wait() *gc.Result {
 	result := <-f.result
 	logResult(result)
 	return result
-
 }
 
 // Log a summary of the service run

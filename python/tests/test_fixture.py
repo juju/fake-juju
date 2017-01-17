@@ -20,8 +20,10 @@ from fakejuju.fixture import (
     FakeJuju,
 )
 
-FAKE_JUJUD = os.path.join(ROOT, "2.0.2", "fake-jujud")
-FAKE_JUJU = os.path.join(ROOT, "2.0.2", "fake-juju")
+JUJU_VERSION = "2.0.2"
+
+FAKE_JUJUD = os.path.join(ROOT, JUJU_VERSION, "fake-jujud")
+FAKE_JUJU = os.path.join(ROOT, JUJU_VERSION, "fake-juju")
 
 # Constants from github.com/juju/juju/testing/environ.go
 CONTROLLER_UUID = "deadbeef-1bad-500d-9000-4b1d0d06f00d"
@@ -49,7 +51,7 @@ class FakeJujuIntegrationTest(TestCase):
         self.useFixture(Reactor())
         self.mongodb = self.useFixture(JujuMongoDB())
         self.fake_juju = self.useFixture(FakeJuju(
-            self.mongodb.port, fake_jujud=FAKE_JUJUD))
+            self.mongodb.port, binary=FAKE_JUJUD))
 
     def test_up(self):
         """The fake-juju service is connected to the mongodb one."""
