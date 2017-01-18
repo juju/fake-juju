@@ -16,13 +16,6 @@ provider as backend.
 It is meant as a helper in integration tests for services that consume Juju
 in some way (typically by talking to its websockets API).
 
-Adding a new version
----------------------
-
-1) Edit the Makefile and add the desired version on the very first line.
-2) Create a new version subdirectory, copy fake-jujud.go and other files
-   there (e.g. Makefile and juju-core.patch)
-
 Dependencies
 ------------
 
@@ -33,14 +26,3 @@ txjuju-daily PPAs and can be added with::
   sudo add-apt-repository -y ppa:juju/stable
   sudo add-apt-repository -y ppa:landscape/txjuju-daily
   sudo apt-get update && sudo apt-get install python-jujuclient python-txjuju
-
-Building
----------
-
-Generally speaking, this package is built and delivered to PPAs from a recipe_.
-
-You can build it locally running::
-
-  $ dpkg-buildpackage -b
-
-.. _recipe: https://code.launchpad.net/fake-juju/+recipes

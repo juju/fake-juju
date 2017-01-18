@@ -41,20 +41,3 @@ go-test:
 .PHONY: py-test
 py-test:
 	cd python && $(TOX)
-
-.PHONY: ci-test
-ci-test:
-	sudo apt-get -y install --force-yes \
-		wget \
-		python3-pip \
-		golang-go \
-		golang-1.6 \
-		python-txjuju
-	# See tests/jujuclient-archive/UPGRADE when a newer jujuclient version is needed.
-	sudo python3 -m pip install \
-		--ignore-installed \
-		--no-cache-dir \
-		--no-index \
-		--find-links $(JUJUCLIENT_DOWNLOADS) \
-		--requirement $(JUJUCLIENT_REQ)
-	$(MAKE) test
