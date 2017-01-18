@@ -1,0 +1,20 @@
+Modify the implementation of the "juju bootstrap" command line so
+instead of going through the regular logic it calls the
+fakeJujuBootstrap method defined in bootstrap-fakejuju.go, which will
+perform a fake bootstrap against the dummy provider.
+
+Index: 2.0.2/src/github.com/juju/juju/cmd/juju/commands/bootstrap.go
+===================================================================
+--- 2.0.2.orig/src/github.com/juju/juju/cmd/juju/commands/bootstrap.go
++++ 2.0.2/src/github.com/juju/juju/cmd/juju/commands/bootstrap.go
+@@ -312,6 +312,10 @@ func (c *bootstrapCommand) parseConstrai
+ // a juju in that environment if none already exists. If there is as yet no environments.yaml file,
+ // the user is informed how to create one.
+ func (c *bootstrapCommand) Run(ctx *cmd.Context) (resultErr error) {
++	// XXX fake-juju: start patch
++	return c.fakeJujuBootstrap()
++	// XXX fake-juju: end patch
++
+ 	if err := c.parseConstraints(ctx); err != nil {
+ 		return err
+ 	}

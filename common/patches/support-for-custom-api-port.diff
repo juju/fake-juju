@@ -1,0 +1,21 @@
+Make it possible to specify a custom API port that the JujuConnSuite
+test machinery will use when starting the API server.
+
+The custom port can be set using the SetAPIPort function defined in
+environs-fakejuju.go.
+
+Index: 2.0.2/src/github.com/juju/juju/provider/dummy/environs.go
+===================================================================
+--- 2.0.2.orig/src/github.com/juju/juju/provider/dummy/environs.go
++++ 2.0.2/src/github.com/juju/juju/provider/dummy/environs.go
+@@ -423,7 +423,9 @@ func newState(name string, ops chan<- Op
+ // listenAPI starts a network listener listening for API
+ // connections and proxies them to the API server port.
+ func (s *environState) listenAPI() int {
+-	l, err := net.Listen("tcp", ":0")
++	// XXX fake-juju: start patch
++	l, err := net.Listen("tcp", fmt.Sprintf(":%d", apiPort))
++	// XXX fake-juju: end patch
+ 	if err != nil {
+ 		panic(fmt.Errorf("cannot start listener: %v", err))
+ 	}

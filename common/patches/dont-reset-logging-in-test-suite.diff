@@ -1,0 +1,31 @@
+Don't allow LoggingSuite (base class of JujuConnSuite) to reset
+logging configuration.
+
+Since fake-jujud sets up logging very early (to log its own starting
+messages), the code in LoggingSuite would overwrite these settings,
+and also discard logging happening during the test setup.
+
+Index: 2.0.2/src/github.com/juju/testing/log.go
+===================================================================
+--- 2.0.2.orig/src/github.com/juju/testing/log.go
++++ 2.0.2/src/github.com/juju/testing/log.go
+@@ -50,6 +50,9 @@ func (s *LoggingSuite) SetUpSuite(c *gc.
+ }
+ 
+ func (s *LoggingSuite) TearDownSuite(c *gc.C) {
++	// XXX fake-juju: start patch
++	return
++	// XXX fake-juju: end patch
+ 	loggo.ResetLogging()
+ }
+ 
+@@ -66,6 +69,9 @@ func (discardWriter) Write(entry loggo.E
+ }
+ 
+ func (s *LoggingSuite) setUp(c *gc.C) {
++	// XXX fake-juju: start patch
++	return
++	// XXX fake-juju: end patch
+ 	loggo.ResetLogging()
+ 	// Don't use the default writer for the test logging, which
+ 	// means we can still get logging output from tests that

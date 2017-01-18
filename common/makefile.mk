@@ -5,9 +5,7 @@ GO_PATH = $(CURDIR)
 JUJU_VERSION = $(shell basename $(CURDIR))
 JUJU_MAJOR = $(shell echo $(JUJU_VERSION) | cut -f1 -d.)
 JUJU_MAJOR_MINOR = $(shell (echo $(JUJU_VERSION) | cut -f 1,2 -d . | cut -f 1 -d -))
-JUJU_PATCH = juju-core.patch
 JUJU_SRC = src
-JUJU_UNPACKED_CLEAN = .unpacked-clean
 JUJU_INSTALLDIR = $(DESTDIR)/usr/bin
 JUJU_INSTALLED = $(JUJU_INSTALLDIR)/fake-juju-$(JUJU_VERSION)
 
@@ -24,11 +22,12 @@ JUJU_TARBALL_URL=https://launchpad.net/$(JUJU_PROJECT)/$(JUJU_MAJOR_MINOR)/$(JUJ
 build: $(JUJU_TARBALL) $(JUJU_PATCH)
 
 	rm -rf $(JUJU_SRC)  # Go doesn't play nice with existing files.
+	rm -rf .pc
 
-	# Extract the original tarball, apply the fake-juju patch and create
+	# Extract the original tarball, apply the quilt patches and create
 	# synlinks in the original tree for the additional fake-juju sources.
 	tar --strip=1 -z -xf $(JUJU_TARBALL)
-	patch -p0 < $(JUJU_PATCH)
+	quilt push -a
 	for name in $(shell find ../common/core/ -name "*.go"); \
 		do ln -s $$(pwd)/$$name $(JUJU_SRC)/$$(echo $$name | cut -d / -f 4-); \
 	done
@@ -57,12 +56,6 @@ clean:
 	rm -f $(JUJU_TARBALL)
 	rm -rf $(JUJU_SRC)
 	rm -f $(JUJU_VERSION)
-
-.PHONY: update-patch
-update-patch: $(JUJU_SRC) $(JUJU_UNPACKED_CLEAN)
-	diff -U 3 -r --no-dereference $(JUJU_UNPACKED_CLEAN) $(JUJU_SRC) > $(JUJU_PATCH); \
-		echo " -- diff exited with $$? --"
-	rm -rf $(JUJU_UNPACKED_CLEAN)
 
 $(JUJU_TARBALL):
 	wget $(JUJU_TARBALL_URL)

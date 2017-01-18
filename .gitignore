@@ -4,6 +4,7 @@ __pycache__
 */fake-jujud
 */fake-juju
 */pkg
+*/.pc
 *.pyc
 .tox
 *.egg-info

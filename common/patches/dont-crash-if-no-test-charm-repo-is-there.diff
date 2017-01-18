@@ -1,0 +1,19 @@
+The regular juju test code sets up a test charm repository that
+fake-jujud doesn't have access to at run time. So we set the
+test charm repository to be empty.
+
+Index: 2.0.2/src/github.com/juju/juju/testcharms/charm.go
+===================================================================
+--- 2.0.2.orig/src/github.com/juju/juju/testcharms/charm.go
++++ 2.0.2/src/github.com/juju/juju/testcharms/charm.go
+@@ -17,7 +17,9 @@ import (
+ )
+ 
+ // Repo provides access to the test charm repository.
+-var Repo = testing.NewRepo("charm-repo", "quantal")
++// XXX fake-juju: start patch
++var Repo = &testing.Repo{}
++// XXX fake-juju: end patch
+ 
+ // UploadCharmWithMeta pushes a new charm to the charmstore.
+ // The uploaded charm takes the supplied charmURL with metadata.yaml and metrics.yaml

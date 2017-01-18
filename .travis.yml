@@ -10,6 +10,7 @@ addons:
     packages:
       - mongodb-org-server
       - python3
+      - quilt
 
 go:
   - 1.6

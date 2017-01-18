@@ -5,6 +5,7 @@ Priority: optional
 Standards-Version: 3.9.2
 Build-Depends: debhelper (>= 9),
                dh-python,
+               quilt,       
                golang,
                golang-1.6,
                python-all (>= 2.6.6-3),

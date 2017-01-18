@@ -1,0 +1,31 @@
+This patch *prevents* signals received by the parent process
+(i.e. fake-juju itself) from propagating to the child mongod process.
+In particular, this is necessary so we can have SIGINT and SIGTERM
+handled just by fake-juju, which will then shutdown mongod by itself,
+without having the OS get in the way.
+
+Index: 2.0.2/src/github.com/juju/testing/mgo.go
+===================================================================
+--- 2.0.2.orig/src/github.com/juju/testing/mgo.go
++++ 2.0.2/src/github.com/juju/testing/mgo.go
+@@ -22,6 +22,7 @@ import (
+ 	"strconv"
+ 	"strings"
+ 	"sync"
++	"syscall"
+ 	"testing"
+ 	"time"
+ 
+@@ -252,6 +253,12 @@ func (inst *MgoInstance) run() error {
+ 		inst.WithoutV8 = true
+ 	}
+ 	server := exec.Command(mongopath, mgoargs...)
++	// XXX fake-juju: start patch
++	server.SysProcAttr = &syscall.SysProcAttr{
++		Setpgid: true,
++		Pgid: 0,
++	}
++	// XXX fake-juju: end patch
+ 	out, err := server.StdoutPipe()
+ 	if err != nil {
+ 		return err

@@ -1,0 +1,17 @@
+Apply mgo fix from https://github.com/go-mgo/mgo/pull/311
+
+Index: 2.0.2/src/gopkg.in/mgo.v2/bson/json.go
+===================================================================
+--- 2.0.2.orig/src/gopkg.in/mgo.v2/bson/json.go
++++ 2.0.2/src/gopkg.in/mgo.v2/bson/json.go
+@@ -308,7 +308,9 @@ func jdecNumberLong(data []byte) (interf
+ func jencNumberLong(v interface{}) ([]byte, error) {
+ 	n := v.(int64)
+ 	f := `{"$numberLong":"%d"}`
+-	if n <= 1<<53 {
++	// XXX fake-juju: start patch
++	if int64(n) <= 1<<53 {
++	// XXX fake-juju: end patch
+ 		f = `{"$numberLong":%d}`
+ 	}
+ 	return fbytes(f, n), nil
