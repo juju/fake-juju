@@ -21,7 +21,8 @@ func (f *FakeJujuRunner) serveControlPlaneAPI() error {
 	// server one is known)
 	port := f.options.Port + 1
 
-	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	var err error
+	f.listener, err = net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		return err
 	}
@@ -29,8 +30,15 @@ func (f *FakeJujuRunner) serveControlPlaneAPI() error {
 
 	go func() {
 		log.Infof("Starting control plane API on port %d", port)
-		server.Serve(listener)
+		server.Serve(f.listener)
 	}()
 
 	return nil
+}
+ 
+// Stop the control plane HTTP server.
+func (f *FakeJujuRunner) stopControlPlaneAPI() {
+	addr := f.listener.Addr()
+	log.Infof("Stopping control plane API on address %s", addr.String())
+	f.listener.Close()
 }

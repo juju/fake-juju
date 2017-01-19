@@ -4,7 +4,7 @@ package service
 
 import (
 	"flag"
-	"io/ioutil"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -57,11 +57,8 @@ func RunFakeJuju() int {
 		Level:  loggo.INFO,
 		Port:   *port,
 	}
-	suite := &FakeJujuSuite{
-		options: options,
-	}
 
-	runner := NewFakeJujuRunner(suite, options)
+	runner := NewFakeJujuRunner(options)
 	runner.Run()
 	result := runner.Wait()
 
@@ -72,9 +69,8 @@ func RunFakeJuju() int {
 	}
 }
 
-func NewFakeJujuRunner(suite *FakeJujuSuite, options *FakeJujuOptions) *FakeJujuRunner {
+func NewFakeJujuRunner(options *FakeJujuOptions) *FakeJujuRunner {
 	return &FakeJujuRunner{
-		suite:    suite,
 		options:  options,
 		commands: make(chan *command, 1),
 		result:   make(chan *gc.Result, 1),
@@ -82,7 +78,6 @@ func NewFakeJujuRunner(suite *FakeJujuSuite, options *FakeJujuOptions) *FakeJuju
 }
 
 type FakeJujuRunner struct {
-	suite   *FakeJujuSuite
 	options *FakeJujuOptions
 
 	// Control channel for sending commands to the main loop, for example
@@ -92,6 +87,9 @@ type FakeJujuRunner struct {
 
 	// Channel for signalling that the main loop has terminated
 	result chan *gc.Result
+
+	// Control plane API port listener
+	listener net.Listener
 }
 
 // Perform some setup tasks (logging, mongo, control plane API) and
@@ -110,34 +108,36 @@ func (f *FakeJujuRunner) Run() {
 	if f.options.Mongo > 0 { // Use an external MongoDB instance
 		log.Infof("Using external MongoDB on port %d", f.options.Mongo)
 
-		// Set the certificates that the service will use
-		err := SetCerts(f.options.Cert)
-		if err != nil {
-			f.result <- &gc.Result{RunError: err}
-			return
+		// If given, the certificates that the service will
+		// use. This option is unset only in unit tests.
+		if f.options.Cert != "" {
+			err := SetCerts(f.options.Cert)
+			if err != nil {
+				f.result <- &gc.Result{RunError: err}
+				return
+			}
 		}
+
 		jujutesting.SetExternalMgoServer(
 			"localhost", f.options.Mongo, coretesting.Certs)
 	} else if f.options.Mongo == 0 { // Start a dedicated MongoDB instance
 		log.Infof("Starting dedicated MongoDB instance")
+
+		// The github.com/juju/testing/mgo.go list of possible mongod paths
+		// doesn't include the path to juju's custom mongod package, so we
+		// we force it via this environment variable.
+		os.Setenv("JUJU_MONGOD", "/usr/lib/juju/mongo3.2/bin/mongod")
 
 		err := jujutesting.MgoServer.Start(coretesting.Certs)
 		if err != nil {
 			f.result <- &gc.Result{RunError: err}
 			return
 		}
-		defer jujutesting.MgoServer.Destroy()
 	}
 
-	if f.options.Mongo != -1 {
-		// Configure the test API server to listen to this port (the server
-		// will be started only at "bootstrap" time, see TestMainLoop()).
-		//
-		// Note that unit tests will set f.options.Mongo to -1, because
-		// we want to let the JujuConnSuite test machinery to handle
-		// the API server and not set a fixed port.
-		dummy.SetAPIPort(f.options.Port)
-	}
+	// Configure the test API server to listen to this port (the server
+	// will be started only at "bootstrap" time, see TestMainLoop()).
+	dummy.SetAPIPort(f.options.Port)
 
 	// Start the control-plane API
 	if err := f.serveControlPlaneAPI(); err != nil {
@@ -147,12 +147,24 @@ func (f *FakeJujuRunner) Run() {
 
 	// Start the main loop, waiting for 'bootstrap' commands
 	conf := &gc.RunConf{
-		Output: ioutil.Discard, // We don't want any output from gocheck
+		Output: os.Stdout,
 		Filter: "TestMainLoop",
 	}
 
 	go func() {
 		result := gc.Run(f, conf)
+
+		if f.options.Mongo == 0 {
+			// Shutdown our dedicated MongoDB instance child
+			// process.
+			log.Infof("Stopping dedicated MongoDB instance")
+			jujutesting.MgoServer.Destroy()
+		}
+
+		if f.listener != nil {
+			f.stopControlPlaneAPI()
+		}
+
 		f.result <- result
 	}()
 }
@@ -167,6 +179,11 @@ func (f *FakeJujuRunner) TestMainLoop(c *gc.C) {
 
 	terminate := make(chan os.Signal, 2)
 	signal.Notify(terminate, os.Interrupt, syscall.SIGTERM)
+
+	suite := &FakeJujuSuite{
+		options: f.options,
+	}
+	suite.SetUpSuite(c)
 
 	// Process commands, typically coming from the control plane API.
 	for {

@@ -1,10 +1,6 @@
 package service
 
 import (
-	"os"
-	"os/signal"
-	"syscall"
-
 	gc "gopkg.in/check.v1"
 	corecharm "gopkg.in/juju/charmrepo.v2-unstable"
 
@@ -45,14 +41,4 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	})
 	err = s.service.InitializeController(controller)
 	c.Assert(err, gc.IsNil)
-}
-
-func (s *FakeJujuSuite) TestStart(c *gc.C) {
-	log.Infof("Initializing TestStart of the test suite")
-	// TODO: implement actual fake-juju logic. For now we just wait forever
-	// until SIGINT (ctrl-c) or SIGTERM is received.
-	channel := make(chan os.Signal, 2)
-	signal.Notify(channel, os.Interrupt, syscall.SIGTERM)
-	<-channel
-	log.Infof("Terminating TestStart")
 }
