@@ -27,4 +27,5 @@ func newCommand(code int) *command {
 // that can be sent to the FakeJujuRunner.commands channel.
 const (
 	commandCodeStop = iota // Used when stopping the runner main loop
+	commandCodeBootstrap
 )

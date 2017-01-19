@@ -206,6 +206,9 @@ func (f *FakeJujuRunner) TestMainLoop(c *gc.C) {
 		if command.code == commandCodeStop {
 			log.Infof("Terminating service")
 			stop = true
+		} else if command.code == commandCodeBootstrap {
+			log.Infof("Bootstrapping fake controller")
+			suite.SetUpTest(c)
 		}
 		command.done <- err
 
@@ -213,6 +216,15 @@ func (f *FakeJujuRunner) TestMainLoop(c *gc.C) {
 			break
 		}
 	}
+
+	if suite.RootDir != "" {
+		// This means that we didn't have chance to tear down the test
+		// because either the destroy command was not invoked or we
+		// got interrupted by a signal. Let's force a clean up.
+		suite.TearDownTest(c)
+	}
+
+	suite.TearDownSuite(c)
 }
 
 // Stop the main loop.
@@ -229,7 +241,6 @@ func (f *FakeJujuRunner) Wait() *gc.Result {
 
 // Log a summary of the service run
 func logResult(result *gc.Result) {
-
 	if !(result.Succeeded == 1) {
 		message := "Unknown error"
 		if result.RunError != nil {

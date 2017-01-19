@@ -14,6 +14,7 @@ import (
 func (f *FakeJujuRunner) serveControlPlaneAPI() error {
 
 	mux := pat.New()
+	mux.Post("/bootstrap", http.HandlerFunc(f.bootstrap))
 
 	// We want to use a port different than the one used for the
 	// juju API server. Incrementing by one will do the trick and
@@ -35,10 +36,29 @@ func (f *FakeJujuRunner) serveControlPlaneAPI() error {
 
 	return nil
 }
- 
+
 // Stop the control plane HTTP server.
 func (f *FakeJujuRunner) stopControlPlaneAPI() {
 	addr := f.listener.Addr()
 	log.Infof("Stopping control plane API on address %s", addr.String())
 	f.listener.Close()
+}
+
+// Bootstrap the controller by starting machine 0
+func (f *FakeJujuRunner) bootstrap(w http.ResponseWriter, req *http.Request) {
+	command := newCommand(commandCodeBootstrap)
+	f.commands <- command
+	writeResponse(w, <-command.done)
+}
+
+// Write the response, in case of error the message is provided in the body.
+func writeResponse(w http.ResponseWriter, err error) {
+	var body string
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		body = err.Error()
+	} else {
+		body = "done"
+	}
+	w.Write([]byte(fmt.Sprintf("%s\n", body)))
 }

@@ -6,6 +6,7 @@ import (
 
 	gc "gopkg.in/check.v1"
 
+	"github.com/juju/juju/api"
 	"github.com/juju/testing"
 	"github.com/juju/loggo"
 
@@ -43,6 +44,21 @@ func (s *FakeJujuRunnerSuite) TestRun(c *gc.C) {
 	c.Assert(result.RunError, gc.IsNil)
 	c.Assert(
 		strings.Contains(s.output.String(), "Starting service"), gc.Equals, true)
+}
+
+// The "bootstrap" API endpoint setups up a new controller backed by the
+// dummy provider.
+func (s *FakeJujuRunnerSuite) TestBootstrapAPI(c *gc.C) {
+	s.runner.Run()
+	defer s.runner.Wait()
+	defer s.runner.Stop()
+
+	client := api.NewFakeJujuClientWithPort(12346)
+	err := client.Bootstrap()
+	if err != nil {
+		c.Log(s.output.String())
+		c.Error(err.Error())
+	}
 }
 
 var _ = gc.Suite(&FakeJujuRunnerSuite{})
