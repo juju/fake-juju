@@ -26,3 +26,7 @@ txjuju-daily PPAs and can be added with::
   sudo add-apt-repository -y ppa:juju/stable
   sudo add-apt-repository -y ppa:landscape/txjuju-daily
   sudo apt-get update && sudo apt-get install python-jujuclient python-txjuju
+
+In addition, you'll want to have quilt and tox installed::
+
+  sudo apt-get install quilt tox

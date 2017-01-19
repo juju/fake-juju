@@ -20,10 +20,10 @@ JUJU_TARBALL_URL=https://launchpad.net/$(JUJU_PROJECT)/$(JUJU_MAJOR_MINOR)/$(JUJ
 
 .PHONY: init
 init:
-	ln -s ../patches .
-	ln -s ../service .
-	ln -s ../fake-jujud.go .
-	ln -s ../fake-juju.go .
+	ln -s ../common/patches .
+	ln -s ../common/service .
+	ln -s ../common/fake-jujud.go .
+	ln -s ../common/fake-juju.go .
 
 .PHONY: build
 build: $(JUJU_TARBALL) $(JUJU_PATCH)
