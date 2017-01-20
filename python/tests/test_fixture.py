@@ -22,7 +22,6 @@ from txfixtures import Reactor
 
 from fakejuju.fixture import (
     ROOT,
-    CERT,
     JujuMongoDB,
     FakeJuju,
 )
@@ -73,7 +72,6 @@ class FakeJujuIntegrationTest(TestCase):
         """
         juju_data = self.useFixture(TempDir())
         self.useFixture(EnvironmentVariable("JUJU_DATA", juju_data.path))
-        self.useFixture(EnvironmentVariable("FAKE_JUJUD_CERTS", CERT))
         check_call([FAKE_JUJU, "bootstrap", "foo", "bar"])
         check_call([FAKE_JUJU, "switch", "bar"], stdout=PIPE, stderr=STDOUT)
 

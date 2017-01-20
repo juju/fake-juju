@@ -32,8 +32,13 @@ type FakeJujuOptions struct {
 	Mongo int
 
 	Port   int    // Port for the API server
-	Cert   string // Path to the directory holding the certificates to use
 	Series string // Default Ubuntu series
+
+	// Whether to use a random certificate for the juju API server. This
+	// is set to true only by unit tests, where we want to leverage the
+	// custom certificate that JujuConnSuite generates, and that the
+	// rest of testing facilities execpt.
+	UseRandomCert bool
 }
 
 // The core fake-juju service

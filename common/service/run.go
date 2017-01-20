@@ -44,7 +44,6 @@ func RunFakeJuju() int {
 	// Command line options
 	flags := flag.NewFlagSet("fake-jujud", flag.ExitOnError)
 	mongo := flags.Int("mongo", 0, "Optional external MongoDB port to use (default is to spawn a new instance on a random free port)")
-	cert := flags.String("cert", "/usr/share/fake-juju/cert", "Certificate directory")
 	port := flags.Int("port", 17099, "The port the API server will listent to")
 	series := flags.String("series", "xenial", "Ubuntu series")
 	flags.Parse(os.Args[1:])
@@ -53,7 +52,6 @@ func RunFakeJuju() int {
 		Output: os.Stdout,
 		Series: *series,
 		Mongo:  *mongo,
-		Cert:   *cert,
 		Level:  loggo.INFO,
 		Port:   *port,
 	}
@@ -105,11 +103,11 @@ func (f *FakeJujuRunner) Run() {
 	setupLogging(f.options.Output, f.options.Level)
 	log.Infof("Starting service")
 
-	// If given, the certificates that the service will
-	// use. This option is unset only in unit tests.
-	if f.options.Cert != "" {
-		err := coretesting.SetCerts(f.options.Cert)
-		if err != nil {
+	// Set the certificates that the service will use. This option
+	// will be false only in unit tests (where we'll use a
+	// randomly generated test certificate).
+	if !f.options.UseRandomCert {
+		if err := coretesting.SetCerts(); err != nil {
 			f.result <- &gc.Result{RunError: err}
 			return
 		}

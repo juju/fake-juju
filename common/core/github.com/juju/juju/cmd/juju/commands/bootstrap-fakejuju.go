@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/juju/juju/api"
 	"github.com/juju/juju/cmd/modelcmd"
@@ -29,7 +28,7 @@ func (c *bootstrapCommand) fakeJujuBootstrap() error {
 
 	logger.Debugf("bootstrapping %s:%s", controller, model)
 
-	if err := testing.SetCerts(os.Getenv("FAKE_JUJUD_CERTS")); err != nil {
+	if err := testing.SetCerts(); err != nil {
 		return err
 	}
 

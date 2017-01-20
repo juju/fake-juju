@@ -55,9 +55,7 @@ class FakeJuju(Service):
         :param binary: Path to the fake-jujud binary to spawn.
         :param port: Port that the fake juju API server will listen to.
         """
-        command = [
-            binary, "-mongo", str(mongo_port), "-cert", CERT,
-            "-port", str(port)]
+        command = [binary, "-mongo", str(mongo_port), "-port", str(port)]
         super(FakeJuju, self).__init__(command, **kwargs)
         self.expectOutput("Starting main loop")
         self.expectPort(port + 1)  # This is the control-plan API port

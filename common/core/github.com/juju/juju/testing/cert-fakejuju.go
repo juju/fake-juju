@@ -5,6 +5,8 @@ package testing
 import (
 	"io/ioutil"
 	"path/filepath"
+	"os"
+	"runtime"
 
 	"github.com/juju/loggo"
 
@@ -30,11 +32,13 @@ var (
 )
 
 // Set the certificate global variables in the github.com/juju/juju/testing
-// package, to make the test suite use a custom certificate (typically the one
-// in the cert/ directory of the fake-juju tree) instead of the auto-generated
+// package, to make the test suite use a custom certificate (the one in the
+// cert/ directory of the fake-juju tree) instead of the auto-generated
 // one that would otherwise be set. This allows us to point to an external
 // MongoDB process, spawned using the custom certificate.
-func SetCerts(path string) error {
+func SetCerts() error {
+
+	path := getCustomCertPath()
 
 	loggo.GetLogger("").Debugf("Loading certificates from %s", path)
 
@@ -66,4 +70,25 @@ func SetCerts(path string) error {
 	}
 
 	return nil
+}
+
+const defaultCertPath = "/usr/share/fake-juju/cert"
+
+// Figure out where our custom certificate lives. If we detect that we're
+// running in fake-juju source checkout, use the local copy of the custom
+// certificate (under <SOURCE>/cert), otherwise use the default installation
+// path.
+func getCustomCertPath() string {
+
+	// Look for the path of this source file
+	_, filename, _, _ := runtime.Caller(0)
+
+	// If we find a local certificate directory, let's use it. Otherwise,
+	// let's use the default installed one.
+	path := filepath.Join(filepath.Dir(filename), "../../../../../../cert")
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		path = defaultCertPath
+	}
+
+	return path
 }
