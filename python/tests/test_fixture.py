@@ -81,7 +81,7 @@ class FakeJujuIntegrationTest(TestCase):
         status = json.loads(output)
 
         self.assertEqual(
-            "pending", status["machines"]["0"]["machine-status"]["current"])
+            "running", status["machines"]["0"]["machine-status"]["current"])
 
         self.assertEqual(
-            "pending", status["machines"]["0"]["juju-status"]["current"])
+            "started", status["machines"]["0"]["juju-status"]["current"])

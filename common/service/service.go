@@ -3,17 +3,23 @@ package service
 import (
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/juju/juju/api"
 	"github.com/juju/juju/instance"
 	"github.com/juju/juju/network"
 	"github.com/juju/juju/state"
+	"github.com/juju/juju/status"
+ 	"github.com/juju/juju/testing"
 	"github.com/juju/juju/version"
 	"github.com/juju/loggo"
 	"github.com/juju/utils"
 
 	semversion "github.com/juju/version"
 )
+
+// Value used when waiting for events like agent presence synchronization.
+const mediumWait = 2 * time.Second
 
 // Runtime options for the fake-juju service
 type FakeJujuOptions struct {
@@ -42,7 +48,11 @@ func NewFakeJujuService(
 }
 
 type FakeJujuService struct {
-	state         *state.State
+
+	// The "backing" State object, i.e. the one that API server
+	// uses (as opposed to the one that the test suite uses).
+	state *state.State
+
 	api           api.Connection
 	options       *FakeJujuOptions
 	instanceCount int
@@ -50,6 +60,7 @@ type FakeJujuService struct {
 
 // Main initialization entry point
 func (s *FakeJujuService) Initialize() error {
+	log.Infof("Initializing the service")
 
 	// Juju needs internet access to reach the charm store.  This is
 	// necessary to download charmstore charms (e.g. when adding a
@@ -88,18 +99,65 @@ func (s *FakeJujuService) Initialize() error {
 }
 
 // Initialize the controller machine (aka machine 0).
-func (s *FakeJujuService) InitializeController(controller *state.Machine) error {
+func (s *FakeJujuService) InitializeController(machine *state.Machine) error {
 	currentVersion := version.Current.String()
 
 	agentVersion, err := semversion.ParseBinary(currentVersion + "-xenial-amd64")
 	if err != nil {
 		return err
 	}
+	err = machine.SetAgentVersion(agentVersion)
+	if err != nil {
+		return err
+	}
 
-	controller.SetAgentVersion(agentVersion)
+	return s.startMachine("0")
+}
 
+// Start a machine (i.e. transition it from pending to started)
+func (s *FakeJujuService) startMachine(id string) error {
+
+	// Get the machine
+	machine, err := s.state.Machine(id)
+	if err != nil {
+		return err
+	}
+
+	// Set network address
 	address := network.NewScopedAddress("127.0.0.1", network.ScopeCloudLocal)
-	return controller.SetProviderAddresses(address)
+	if err := machine.SetProviderAddresses(address); err != nil {
+		return err
+	}
+
+	// Set agent and instance status
+	now := testing.ZeroTime()
+	err = machine.SetStatus(status.StatusInfo{
+		Status:  status.Started,
+		Message: "",
+		Since:   &now,
+	})
+	if err != nil {
+		return err
+	}
+	err = machine.SetInstanceStatus(status.StatusInfo{
+		Status:  status.Running,
+		Message: "",
+		Since:   &now,
+	})
+	if err != nil {
+		return err
+	}
+
+	// Set agent presence
+	if _, err := machine.SetAgentPresence(); err != nil {
+		return err
+	}
+	s.state.StartSync()
+	if err := machine.WaitAgentPresence(mediumWait); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *FakeJujuService) NewInstanceId() instance.Id {

@@ -8,6 +8,8 @@ import (
 	"github.com/juju/juju/juju/testing"
 	"github.com/juju/juju/state"
 	"github.com/juju/juju/testing/factory"
+
+	jc "github.com/juju/testing/checkers"
 )
 
 // Wrapper to setup and run the core FakeJujuService.
@@ -29,9 +31,9 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 
 	s.PatchValue(&corecharm.CacheDir, c.MkDir())
 
-	s.service = NewFakeJujuService(s.State, s.APIState, s.options)
+	s.service = NewFakeJujuService(s.BackingState, s.APIState, s.options)
 	err := s.service.Initialize()
-	c.Assert(err, gc.IsNil)
+	c.Assert(err, jc.ErrorIsNil)
 
 	controller := s.Factory.MakeMachine(c, &factory.MachineParams{
 		InstanceId: s.service.NewInstanceId(),
