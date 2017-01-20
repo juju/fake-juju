@@ -105,18 +105,18 @@ func (f *FakeJujuRunner) Run() {
 	setupLogging(f.options.Output, f.options.Level)
 	log.Infof("Starting service")
 
+	// If given, the certificates that the service will
+	// use. This option is unset only in unit tests.
+	if f.options.Cert != "" {
+		err := coretesting.SetCerts(f.options.Cert)
+		if err != nil {
+			f.result <- &gc.Result{RunError: err}
+			return
+		}
+	}
+
 	if f.options.Mongo > 0 { // Use an external MongoDB instance
 		log.Infof("Using external MongoDB on port %d", f.options.Mongo)
-
-		// If given, the certificates that the service will
-		// use. This option is unset only in unit tests.
-		if f.options.Cert != "" {
-			err := SetCerts(f.options.Cert)
-			if err != nil {
-				f.result <- &gc.Result{RunError: err}
-				return
-			}
-		}
 
 		jujutesting.SetExternalMgoServer(
 			"localhost", f.options.Mongo, coretesting.Certs)
@@ -242,11 +242,7 @@ func (f *FakeJujuRunner) Wait() *gc.Result {
 // Log a summary of the service run
 func logResult(result *gc.Result) {
 	if !(result.Succeeded == 1) {
-		message := "Unknown error"
-		if result.RunError != nil {
-			message = result.RunError.Error()
-		}
-		log.Infof("Service finished uncleanly: %s", message)
+		log.Infof("Service finished uncleanly: %s", result.String())
 	} else {
 		log.Infof("Service finished cleanly")
 	}

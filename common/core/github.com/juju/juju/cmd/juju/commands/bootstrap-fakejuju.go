@@ -3,10 +3,9 @@ package commands
 import (
 	"fmt"
 	"os"
-	"strconv"
 
-	"github.com/juju/errors"
-
+	"github.com/juju/juju/api"
+	"github.com/juju/juju/cmd/modelcmd"
 	"github.com/juju/juju/jujuclient"
 	"github.com/juju/juju/testing"
 	"github.com/juju/juju/version"
@@ -28,6 +27,12 @@ func (c *bootstrapCommand) fakeJujuBootstrap() error {
 	controller := c.controllerName
 	model := "controller"
 
+	logger.Debugf("bootstrapping %s:%s", controller, model)
+
+	if err := testing.SetCerts(os.Getenv("FAKE_JUJUD_CERTS")); err != nil {
+		return err
+	}
+
 	if err := writeControllersFile(store, controller); err != nil {
 		return err
 	}
@@ -44,12 +49,31 @@ func (c *bootstrapCommand) fakeJujuBootstrap() error {
 		return err
 	}
 
+	// Connect to fake-jujud and create a new controller
+	if err := performBootstrap(); err != nil {
+		return err
+	}
+
+	// Ensure that the setup is valid
+	if err := c.SetModelName(modelcmd.JoinModelName(controller, model)); err != nil {
+		return err
+	}
+	client, err := c.NewAPIClient()
+	if err != nil {
+		return err
+	}
+	version, err := client.AgentVersion()
+	if err != nil {
+		return err
+	}
+	logger.Debugf("fake-jujud agent version %s", version.String())
+
 	return nil
 }
 
 // Write a fake controllers.yaml
 func writeControllersFile(store jujuclient.ClientStore, controller string) error {
-	port, err := getFakeJujudPort()
+	port, err := api.GetFakeJujudPort()
 	if err != nil {
 		return err
 	}
@@ -57,7 +81,7 @@ func writeControllersFile(store jujuclient.ClientStore, controller string) error
 		ControllerUUID: testing.ControllerTag.Id(),
 		CACert:         testing.CACert,
 		AgentVersion:   version.Current.String(),
-		APIEndpoints:   []string{fmt.Sprintf("localhost:%d", port)},
+		APIEndpoints:   []string{fmt.Sprintf("localhost:%d", port - 1)},
 	}
 	return store.AddController(controller, details)
 }
@@ -79,14 +103,14 @@ func writeModelsFile(store jujuclient.ClientStore, controller, model string) err
 	return store.UpdateModel(controller, model, details)
 }
 
-// Figure the port that fake-jujud is listening to.
-func getFakeJujudPort() (port int, err error) {
-	port = 17079  // the default
-	if os.Getenv("FAKE_JUJUD_PORT") != "" {
-		port, err = strconv.Atoi(os.Getenv("FAKE_JUJUD_PORT"))
-		if err != nil {
-			return 0, errors.Annotate(err, "invalid port number")
-		}
+// Perform a fake bootstrap by connecting to the faje-jujud service
+// using the control API.
+func performBootstrap() error {
+
+	// Perform a bootstrap request against fake-juju
+	client, err := api.NewFakeJujuClient()
+	if err != nil {
+		return err
 	}
-	return port, nil
+	return client.Bootstrap()
 }

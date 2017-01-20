@@ -1,15 +1,16 @@
 // Handle test certificates used by fake-juju
 
-package service
+package testing
 
 import (
 	"io/ioutil"
 	"path/filepath"
 
+	"github.com/juju/loggo"
+
 	gitjujutesting "github.com/juju/testing"
 
 	"github.com/juju/juju/cert"
-	"github.com/juju/juju/testing"
 )
 
 var (
@@ -21,10 +22,10 @@ var (
 	}
 
 	certificates = []*string{
-		&testing.CACert,
-		&testing.CAKey,
-		&testing.ServerCert,
-		&testing.ServerKey,
+		&CACert,
+		&CAKey,
+		&ServerCert,
+		&ServerKey,
 	}
 )
 
@@ -35,7 +36,7 @@ var (
 // MongoDB process, spawned using the custom certificate.
 func SetCerts(path string) error {
 
-	log.Infof("Loading certificates from %s", path)
+	loggo.GetLogger("").Debugf("Loading certificates from %s", path)
 
 	// Read the certificate bytes, overwriting the relevant variables
 	// from github.com/juju/juju/testing.
@@ -48,20 +49,17 @@ func SetCerts(path string) error {
 	}
 
 	// Parse the bytes converting them into Go objects
-	caCertX509, _, err := cert.ParseCertAndKey(
-		testing.CACert, testing.CAKey)
+	caCertX509, _, err := cert.ParseCertAndKey(CACert, CAKey)
 	if err != nil {
 		return err
 	}
-	serverCert, serverKey, err := cert.ParseCertAndKey(
-		testing.ServerCert, testing.ServerKey)
-
+	serverCert, serverKey, err := cert.ParseCertAndKey(ServerCert, ServerKey)
 	if err != nil {
 		return err
 	}
 
 	// Set the global Certs object in the Juju testing package
-	testing.Certs = &gitjujutesting.Certs{
+	Certs = &gitjujutesting.Certs{
 		CACert:     caCertX509,
 		ServerCert: serverCert,
 		ServerKey:  serverKey,
