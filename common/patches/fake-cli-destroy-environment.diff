@@ -1,0 +1,19 @@
+Modify the implementation of the "juju destroy-controller" command line so
+instead of going through the regular logic it calls a the
+fakeJujuDestroyController method defined in destroy-fakejuju.go, which will
+perform a fake destroy against the dummy provider.
+
+Index: 2.0.2/src/github.com/juju/juju/cmd/juju/controller/destroy.go
+===================================================================
+--- 2.0.2.orig/src/github.com/juju/juju/cmd/juju/controller/destroy.go
++++ 2.0.2/src/github.com/juju/juju/cmd/juju/controller/destroy.go
+@@ -110,6 +110,9 @@ func (c *destroyCommand) SetFlags(f *gnu
+ 
+ // Run implements Command.Run
+ func (c *destroyCommand) Run(ctx *cmd.Context) error {
++	// XXX fake-juju: start patch
++	return c.fakeJujuDestroyController()
++	// XXX fake-juju: end patch
+ 	controllerName := c.ControllerName()
+ 	store := c.ClientStore()
+ 	if !c.assumeYes {

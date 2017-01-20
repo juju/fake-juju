@@ -15,6 +15,7 @@ func (f *FakeJujuRunner) serveControlPlaneAPI() error {
 
 	mux := pat.New()
 	mux.Post("/bootstrap", http.HandlerFunc(f.bootstrap))
+	mux.Post("/destroy", http.HandlerFunc(f.destroy))
 
 	// We want to use a port different than the one used for the
 	// juju API server. Incrementing by one will do the trick and
@@ -47,6 +48,14 @@ func (f *FakeJujuRunner) stopControlPlaneAPI() {
 // Bootstrap the controller by starting machine 0
 func (f *FakeJujuRunner) bootstrap(w http.ResponseWriter, req *http.Request) {
 	command := newCommand(commandCodeBootstrap)
+	f.commands <- command
+	writeResponse(w, <-command.done)
+}
+
+// Destroy the controller by tearing down the FakeJujuSuite, which under the
+// hood will stop the test juju API server and reset the database.
+func (f *FakeJujuRunner) destroy(w http.ResponseWriter, req *http.Request) {
+	command := newCommand(commandCodeDestroy)
 	f.commands <- command
 	writeResponse(w, <-command.done)
 }

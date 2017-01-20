@@ -1,3 +1,4 @@
+fake-cli-destroy-environment.diff
 allow-importing-charms-during-model-upgrades.diff
 fake-cli-bootstrap.diff
 support-for-custom-api-port.diff

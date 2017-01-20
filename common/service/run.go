@@ -207,6 +207,9 @@ func (f *FakeJujuRunner) TestMainLoop(c *gc.C) {
 		} else if command.code == commandCodeBootstrap {
 			log.Infof("Bootstrapping fake controller")
 			suite.SetUpTest(c)
+		} else if command.code == commandCodeDestroy {
+			log.Infof("Destroying fake controller")
+			suite.TearDownTest(c)
 		}
 		command.done <- err
 
@@ -215,7 +218,7 @@ func (f *FakeJujuRunner) TestMainLoop(c *gc.C) {
 		}
 	}
 
-	if suite.RootDir != "" {
+	if isControllerBootstrapped(suite) {
 		// This means that we didn't have chance to tear down the test
 		// because either the destroy command was not invoked or we
 		// got interrupted by a signal. Let's force a clean up.
@@ -244,4 +247,11 @@ func logResult(result *gc.Result) {
 	} else {
 		log.Infof("Service finished cleanly")
 	}
+}
+
+// Whether the dummy controller created by FakeJujuSuite has been bootstrapped.
+func isControllerBootstrapped(suite *FakeJujuSuite) bool {
+	// Use the presence of the RootDir has a flag indicating that the
+	// suite setup has run.
+	return suite.RootDir != ""
 }

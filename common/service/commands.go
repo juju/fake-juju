@@ -28,4 +28,5 @@ func newCommand(code int) *command {
 const (
 	commandCodeStop = iota // Used when stopping the runner main loop
 	commandCodeBootstrap
+	commandCodeDestroy
 )

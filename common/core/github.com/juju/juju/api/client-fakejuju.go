@@ -39,6 +39,11 @@ func (c *FakeJujuClient) Bootstrap() error {
 	return c.post("bootstrap")
 }
 
+// Destroy the running controller
+func (c *FakeJujuClient) Destroy() error {
+	return c.post("destroy")
+}
+
 // Perform a POST HTTP request against the fake-juju control API
 func (c *FakeJujuClient) post(path string) error {
 	url := fmt.Sprintf("http://127.0.0.1:%d/%s", c.port, path)

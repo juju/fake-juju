@@ -8,6 +8,7 @@ from subprocess import (
     check_call,
     STDOUT,
     PIPE,
+    CalledProcessError,
 )
 
 from testtools import TestCase
@@ -83,3 +84,17 @@ class FakeJujuIntegrationTest(TestCase):
 
         self.assertEqual(
             "started", status["machines"]["0"]["juju-status"]["current"])
+
+    def test_cli_destroy_controller(self):
+        """
+        The fake-juju command line tool can destroy the fake controller, using
+        the normal "destroy-controller" subcommand.
+        """
+        juju_data = self.useFixture(TempDir())
+        self.useFixture(EnvironmentVariable("JUJU_DATA", juju_data.path))
+        check_call([FAKE_JUJU, "bootstrap", "foo", "bar"])
+        check_call([FAKE_JUJU, "switch", "bar"], stdout=PIPE, stderr=STDOUT)
+        check_call([FAKE_JUJU, "destroy-controller", "-y", "bar"])
+        self.assertRaises(
+            CalledProcessError,
+            check_call, [FAKE_JUJU, "status"], stdout=PIPE, stderr=STDOUT)
