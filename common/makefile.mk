@@ -44,7 +44,7 @@ build: $(JUJU_TARBALL) $(JUJU_PATCH)
 
 .PHONY: unit-test
 unit-test: $(JUJU_TARBALL) $(JUJU_PATCH)
-	GOPATH=$(GO_PATH) $(GO) test ./service -gocheck.v
+	GOPATH=$(GO_PATH) $(GO) test ./service -timeout 5m -gocheck.vv
 
 .PHONY: test
 ifeq (1, $(SKIP_FUNCTIONAL_TESTS))

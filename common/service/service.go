@@ -1,26 +1,27 @@
+// Core logic for the fake-jujud process.
+//
+// It mainly implements a watch loop that reacts to changes in juju
+// entities. For example it will automatically transition new machines
+// from the "pending" to the "started" state.
+//
+// The logic in this file is only about the top-level watch loop. The
+// logic for handling specific entities is implemented in the files
+// named after the entities (machine.go, unit.go etc).
 package service
 
 import (
-	"fmt"
 	"io"
 	"time"
 
 	"github.com/juju/juju/api"
-	"github.com/juju/juju/instance"
-	"github.com/juju/juju/network"
 	"github.com/juju/juju/state"
 	"github.com/juju/juju/state/multiwatcher"
-	"github.com/juju/juju/status"
-	"github.com/juju/juju/testing"
-	"github.com/juju/juju/version"
 	"github.com/juju/loggo"
 	"github.com/juju/utils"
-
-	semversion "github.com/juju/version"
 )
 
 // Value used when waiting for events like agent presence synchronization.
-const mediumWait = 2 * time.Second
+const MediumWait = 2 * time.Second
 
 // Runtime options for the fake-juju service
 type FakeJujuOptions struct {
@@ -112,27 +113,6 @@ func (s *FakeJujuService) Initialize() error {
 	return nil
 }
 
-// Initialize the controller machine (aka machine 0).
-func (s *FakeJujuService) InitializeController(machine *state.Machine) error {
-	currentVersion := version.Current.String()
-
-	agentVersion, err := semversion.ParseBinary(currentVersion + "-xenial-amd64")
-	if err != nil {
-		return err
-	}
-	err = machine.SetAgentVersion(agentVersion)
-	if err != nil {
-		return err
-	}
-
-	return s.startMachine("0")
-}
-
-func (s *FakeJujuService) NewInstanceId() instance.Id {
-	s.instanceCount += 1
-	return instance.Id(fmt.Sprintf("id-%d", s.instanceCount))
-}
-
 // Start the service. It will watch for changes and react accordingly.
 func (s *FakeJujuService) Start() {
 	s.watcher = s.state.Watch()
@@ -193,52 +173,10 @@ func (s *FakeJujuService) handleDelta(delta multiwatcher.Delta) error {
 
 // Handle a changed entity
 func (s *FakeJujuService) handleEntityChanged(entity multiwatcher.EntityId) error {
-	// TODO: add logic to handle entity changes
-	return nil
-}
-
-// Start a machine (i.e. transition it from pending to started)
-func (s *FakeJujuService) startMachine(id string) error {
-
-	// Get the machine
-	machine, err := s.state.Machine(id)
-	if err != nil {
-		return err
+	if entity.Kind == "machine" {
+		return s.handleMachineChanged(entity.Id)
+	} else {
+		log.Infof("Ignoring kind %s", entity.Kind)
+		return nil
 	}
-
-	// Set network address
-	address := network.NewScopedAddress("127.0.0.1", network.ScopeCloudLocal)
-	if err := machine.SetProviderAddresses(address); err != nil {
-		return err
-	}
-
-	// Set agent and instance status
-	now := testing.ZeroTime()
-	err = machine.SetStatus(status.StatusInfo{
-		Status:  status.Started,
-		Message: "",
-		Since:   &now,
-	})
-	if err != nil {
-		return err
-	}
-	err = machine.SetInstanceStatus(status.StatusInfo{
-		Status:  status.Running,
-		Message: "",
-		Since:   &now,
-	})
-	if err != nil {
-		return err
-	}
-
-	// Set agent presence
-	if _, err := machine.SetAgentPresence(); err != nil {
-		return err
-	}
-	s.state.StartSync()
-	if err := machine.WaitAgentPresence(mediumWait); err != nil {
-		return err
-	}
-
-	return nil
 }

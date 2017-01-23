@@ -4,10 +4,8 @@ import (
 	gc "gopkg.in/check.v1"
 	corecharm "gopkg.in/juju/charmrepo.v2-unstable"
 
-	"github.com/juju/juju/agent"
 	"github.com/juju/juju/juju/testing"
 	"github.com/juju/juju/state"
-	"github.com/juju/juju/testing/factory"
 
 	jc "github.com/juju/testing/checkers"
 )
@@ -35,13 +33,11 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	err := s.service.Initialize()
 	c.Assert(err, jc.ErrorIsNil)
 
-	controller := s.Factory.MakeMachine(c, &factory.MachineParams{
-		InstanceId: s.service.NewInstanceId(),
-		Nonce:      agent.BootstrapNonce,
-		Jobs:       []state.MachineJob{state.JobManageModel, state.JobHostUnits},
+	log.Infof("Creating controller machine")
+	_, err = s.BackingState.AddOneMachine(state.MachineTemplate{
 		Series:     s.options.Series,
+		Jobs:       []state.MachineJob{state.JobManageModel, state.JobHostUnits},
 	})
-	err = s.service.InitializeController(controller)
 	c.Assert(err, gc.IsNil)
 
 	log.Infof("Starting fake-juju watch loop")

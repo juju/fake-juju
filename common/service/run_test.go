@@ -25,6 +25,7 @@ func (s *FakeJujuRunnerSuite) SetUpTest(c *gc.C) {
 	s.output = &bytes.Buffer{}
 	s.options = &service.FakeJujuOptions{
 		Output:        s.output,
+		Series:        "xenial",
 		Level:         loggo.DEBUG,
 		Mongo:         testing.MgoServer.Port(),
 		Port:          12345,
