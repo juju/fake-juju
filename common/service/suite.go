@@ -26,7 +26,7 @@ type FakeJujuSuite struct {
 }
 
 func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
-	log.Infof("Initializing test suite")
+	log.Infof("Initializing fake-juju controller")
 	s.JujuConnSuite.SetUpTest(c)
 
 	s.PatchValue(&corecharm.CacheDir, c.MkDir())
@@ -43,4 +43,19 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 	})
 	err = s.service.InitializeController(controller)
 	c.Assert(err, gc.IsNil)
+
+	log.Infof("Starting fake-juju watch loop")
+	s.service.Start()
+}
+
+func (s *FakeJujuSuite) TearDownTest(c *gc.C) {
+	log.Infof("Stopping fake-juju watch loop")
+
+	c.Assert(s.service.Stop(), gc.IsNil)
+
+	s.JujuConnSuite.TearDownTest(c)
+}
+
+func (s *FakeJujuSuite) Wait() error {
+	return s.service.Wait()
 }

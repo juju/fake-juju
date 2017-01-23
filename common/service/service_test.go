@@ -82,6 +82,26 @@ func (s *FakeJujuServiceSuite) TestInitializeController(c *gc.C) {
 	c.Assert(alive, gc.Equals, true)
 }
 
+// The watch loop can be started and stopped.
+func (s *FakeJujuServiceSuite) TestStartAndStopWatchLoop(c *gc.C) {
+	s.service.Start()
+	err := s.service.Stop()
+	c.Assert(err, gc.IsNil)
+}
+
+// In case an unexpected error occurs during the watch loop, the Wait()
+// method will return it.
+func (s *FakeJujuServiceSuite) TestWatchLoopError(c *gc.C) {
+	s.service.Start()
+
+	// Close the State object that the watch loop is connected to, this
+	// will cause a wather error.
+	s.BackingState.Close()
+
+	err := s.service.Wait()
+	c.Assert(err.Error(), gc.Equals, "shared state watcher was stopped")
+}
+
 var _ = gc.Suite(&FakeJujuServiceSuite{})
 
 // Hook up gocheck into the "go test" runner.

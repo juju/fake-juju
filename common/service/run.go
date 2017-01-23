@@ -207,6 +207,7 @@ func (f *FakeJujuRunner) TestMainLoop(c *gc.C) {
 		} else if command.code == commandCodeBootstrap {
 			log.Infof("Bootstrapping fake controller")
 			suite.SetUpTest(c)
+			go f.monitorWatchLoop(suite)
 		} else if command.code == commandCodeDestroy {
 			log.Infof("Destroying fake controller")
 			suite.TearDownTest(c)
@@ -238,6 +239,24 @@ func (f *FakeJujuRunner) Wait() *gc.Result {
 	result := <-f.result
 	logResult(result)
 	return result
+}
+
+// Monitor the watch loop of FakeJujuService and catch unexpected
+// errors.  If anything bad happens, we'll bail out. Otherwise, this
+// goroutine will silently terminate when the delta watch loop in
+// FakeJujuService gets stopped.
+func (f *FakeJujuRunner) monitorWatchLoop(suite *FakeJujuSuite) {
+
+	// Here we block until the watch loop terminates, either
+	// successfully or not.
+	err := suite.Wait()
+
+	if err != nil {
+		log.Errorf("Watch loop error: %s", err.Error())
+		f.Stop()
+	} else {
+		log.Infof("Stop monitoring watch loop")
+	}
 }
 
 // Log a summary of the service run

@@ -9,8 +9,9 @@ import (
 	"github.com/juju/juju/instance"
 	"github.com/juju/juju/network"
 	"github.com/juju/juju/state"
+	"github.com/juju/juju/state/multiwatcher"
 	"github.com/juju/juju/status"
- 	"github.com/juju/juju/testing"
+	"github.com/juju/juju/testing"
 	"github.com/juju/juju/version"
 	"github.com/juju/loggo"
 	"github.com/juju/utils"
@@ -49,6 +50,7 @@ func NewFakeJujuService(
 		state:   state,
 		api:     api,
 		options: options,
+		done:    make(chan error, 1),
 	}
 }
 
@@ -58,9 +60,16 @@ type FakeJujuService struct {
 	// uses (as opposed to the one that the test suite uses).
 	state *state.State
 
-	api           api.Connection
-	options       *FakeJujuOptions
+	api     api.Connection
+	options *FakeJujuOptions
+	watcher *state.Multiwatcher
+
+	// Monotonically incrementing counter for generating instance IDs.
 	instanceCount int
+
+	// A channel that will be filled with nil if the FakeJujuService
+	// completes cleanly, or with an error otherwise.
+	done chan error
 }
 
 // Main initialization entry point
@@ -119,6 +128,75 @@ func (s *FakeJujuService) InitializeController(machine *state.Machine) error {
 	return s.startMachine("0")
 }
 
+func (s *FakeJujuService) NewInstanceId() instance.Id {
+	s.instanceCount += 1
+	return instance.Id(fmt.Sprintf("id-%d", s.instanceCount))
+}
+
+// Start the service. It will watch for changes and react accordingly.
+func (s *FakeJujuService) Start() {
+	s.watcher = s.state.Watch()
+	go s.watch()
+}
+
+// Stop the service, cancelling our delta watcher. This method will wait
+// for the watch loop to terminate, and return any error occurring while
+// shutting down.
+func (s *FakeJujuService) Stop() error {
+	if err := s.watcher.Stop(); err != nil {
+		return err
+	}
+	return s.Wait()
+}
+
+// Wait for the service to terminate, either cleanly or with an error.
+func (s *FakeJujuService) Wait() error {
+	return <-s.done
+}
+
+// Watch the model and react to changes. The loop will terminate when
+// the Stop() method is called, or an unexpected error occurs.
+func (s *FakeJujuService) watch() {
+	for {
+		deltas, err := s.watcher.Next()
+		if err != nil {
+			if err.Error() != state.ErrStopped.Error() {
+				log.Errorf("Watcher error: %s", err.Error())
+				s.done <- err
+			}
+			break
+		}
+		for _, delta := range deltas {
+			if err := s.handleDelta(delta); err != nil {
+				log.Errorf("Delta error: %s (%v)", err.Error(), delta)
+				s.done <- err
+			}
+		}
+	}
+	log.Infof("Watch loop terminated")
+
+	// This will unblock any caller of Wait(), and make it return "nil"
+	// to signal a clean termination.
+	close(s.done)
+}
+
+// Handle an entity delta
+func (s *FakeJujuService) handleDelta(delta multiwatcher.Delta) error {
+	entity := delta.Entity.EntityId()
+	log.Infof("Delta for %s-%s (removed: %t)", entity.Kind, entity.Id, delta.Removed)
+	if delta.Removed {
+		return nil
+	} else {
+		return s.handleEntityChanged(entity)
+	}
+}
+
+// Handle a changed entity
+func (s *FakeJujuService) handleEntityChanged(entity multiwatcher.EntityId) error {
+	// TODO: add logic to handle entity changes
+	return nil
+}
+
 // Start a machine (i.e. transition it from pending to started)
 func (s *FakeJujuService) startMachine(id string) error {
 
@@ -163,9 +241,4 @@ func (s *FakeJujuService) startMachine(id string) error {
 	}
 
 	return nil
-}
-
-func (s *FakeJujuService) NewInstanceId() instance.Id {
-	s.instanceCount += 1
-	return instance.Id(fmt.Sprintf("id-%d", s.instanceCount))
 }
