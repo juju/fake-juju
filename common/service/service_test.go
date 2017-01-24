@@ -8,10 +8,17 @@ import (
 	"github.com/juju/utils"
 
 	coretesting "github.com/juju/juju/juju/testing"
+	"github.com/juju/juju/testcharms"
 	jujutesting "github.com/juju/juju/testing"
 
 	"../service"
 )
+
+func init() {
+	// Reverse the dont-crash-if-no-test-charm-repo-is-there.diff patch,
+	// since for unit testing we do actually want a test repository.
+	testcharms.BuildRepo()
+}
 
 type FakeJujuServiceSuite struct {
 	coretesting.JujuConnSuite

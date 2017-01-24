@@ -173,9 +173,12 @@ func (s *FakeJujuService) handleDelta(delta multiwatcher.Delta) error {
 
 // Handle a changed entity
 func (s *FakeJujuService) handleEntityChanged(entity multiwatcher.EntityId) error {
-	if entity.Kind == "machine" {
+	switch entity.Kind {
+	case "machine":
 		return s.handleMachineChanged(entity.Id)
-	} else {
+	case "unit":
+		return s.handleUnitChanged(entity.Id)
+	default:
 		log.Infof("Ignoring kind %s", entity.Kind)
 		return nil
 	}

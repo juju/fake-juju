@@ -4,12 +4,12 @@ package service
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/juju/juju/instance"
 	"github.com/juju/juju/network"
 	"github.com/juju/juju/state"
 	"github.com/juju/juju/status"
-	"github.com/juju/juju/testing"
 	"github.com/juju/juju/version"
 	semversion "github.com/juju/version"
 )
@@ -43,7 +43,7 @@ func (s *FakeJujuService) startMachine(machine *state.Machine) error {
 
 	log.Infof("Starting machine %s", machine.Id())
 
-	now := testing.ZeroTime()
+	now := time.Now()
 
 	// Set network address
 	address := network.NewScopedAddress("127.0.0.1", network.ScopeCloudLocal)

@@ -2,17 +2,26 @@ The regular juju test code sets up a test charm repository that
 fake-jujud doesn't have access to at run time. So we set the
 test charm repository to be empty.
 
+The patch also adds a helper BuildRepo function that initializes
+the Repo variable with the sample repository, like the original
+code. This is needed for unit tests of fake-juju itself, that do
+want a test charm repository.
+
 Index: 2.0.2/src/github.com/juju/juju/testcharms/charm.go
 ===================================================================
 --- 2.0.2.orig/src/github.com/juju/juju/testcharms/charm.go
 +++ 2.0.2/src/github.com/juju/juju/testcharms/charm.go
-@@ -17,7 +17,9 @@ import (
+@@ -17,7 +17,13 @@ import (
  )
  
  // Repo provides access to the test charm repository.
 -var Repo = testing.NewRepo("charm-repo", "quantal")
 +// XXX fake-juju: start patch
 +var Repo = &testing.Repo{}
++
++func BuildRepo() {
++	Repo = testing.NewRepo("charm-repo", "quantal")
++}
 +// XXX fake-juju: end patch
  
  // UploadCharmWithMeta pushes a new charm to the charmstore.
