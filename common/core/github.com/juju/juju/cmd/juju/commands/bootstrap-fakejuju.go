@@ -82,7 +82,10 @@ func writeControllersFile(store jujuclient.ClientStore, controller string) error
 		AgentVersion:   version.Current.String(),
 		APIEndpoints:   []string{fmt.Sprintf("localhost:%d", port - 1)},
 	}
-	return store.AddController(controller, details)
+	if err := store.AddController(controller, details); err != nil {
+		return err
+	}
+	return store.SetCurrentController(controller)
 }
 
 // Write a fake accounts.yaml

@@ -46,13 +46,18 @@ func RunFakeJuju() int {
 	mongo := flags.Int("mongo", 0, "Optional external MongoDB port to use (default is to spawn a new instance on a random free port)")
 	port := flags.Int("port", 17099, "The port the API server will listent to")
 	series := flags.String("series", "xenial", "Ubuntu series")
+	debug := flags.Bool("debug", false, "Enable debug logging")
 	flags.Parse(os.Args[1:])
 
+	level := loggo.INFO
+	if *debug {
+		level = loggo.DEBUG
+	}
 	options := &FakeJujuOptions{
 		Output: os.Stdout,
 		Series: *series,
 		Mongo:  *mongo,
-		Level:  loggo.INFO,
+		Level:  level,
 		Port:   *port,
 	}
 

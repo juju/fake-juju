@@ -15,6 +15,7 @@ Build-Depends: debhelper (>= 9),
                python-jujuclient,
                python-testtools,
                python-twisted-core (>= 16.0.0),
+               python-txfixtures,
                python-txjuju,
                python-yaml,
                wget
@@ -23,6 +24,7 @@ Package: fake-juju
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends},
          juju-mongodb,
+         juju-mongodb3.2,
          python-fakejuju
 Description: A fake implentation of Juju using the dummy provider.
  Provide a fake Juju server behaving like a regular one, except
@@ -35,6 +37,7 @@ Depends: ${python:Depends}, ${misc:Depends}, ${extra:Depends}, ${shlibs:Depends}
          python-fixtures,
          python-testtools,
          python-twisted-core (>= 16.0.0),
+         python-txfixtures,
          python-txjuju,
          python-yaml
 Description: Python bindings for managing fake-juju.

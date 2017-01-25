@@ -1,1 +1,3 @@
 usr/bin/fake-juju-*
+usr/bin/fake-jujud-*
+usr/share/fake-juju/cert/

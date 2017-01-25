@@ -6,8 +6,9 @@ JUJU_VERSION = $(shell basename $(CURDIR))
 JUJU_MAJOR = $(shell echo $(JUJU_VERSION) | cut -f1 -d.)
 JUJU_MAJOR_MINOR = $(shell (echo $(JUJU_VERSION) | cut -f 1,2 -d . | cut -f 1 -d -))
 JUJU_SRC = src
-JUJU_INSTALLDIR = $(DESTDIR)/usr/bin
-JUJU_INSTALLED = $(JUJU_INSTALLDIR)/fake-juju-$(JUJU_VERSION)
+
+SERVER = fake-jujud
+CLIENT = fake-juju
 
 ifeq (1, $(JUJU_MAJOR))
   JUJU_PROJECT=juju-core
@@ -22,28 +23,16 @@ JUJU_TARBALL_URL=https://launchpad.net/$(JUJU_PROJECT)/$(JUJU_MAJOR_MINOR)/$(JUJ
 init:
 	ln -s ../common/patches .
 	ln -s ../common/service .
-	ln -s ../common/fake-jujud.go .
-	ln -s ../common/fake-juju.go .
+	ln -s ../common/$(SERVER).go .
+	ln -s ../common/$(CLIENT).go .
 
 .PHONY: build
-build: $(JUJU_TARBALL) $(JUJU_PATCH)
-
-	rm -rf $(JUJU_SRC)  # Go doesn't play nice with existing files.
-	rm -rf .pc
-
-	# Extract the original tarball, apply the quilt patches and create
-	# synlinks in the original tree for the additional fake-juju sources.
-	tar --strip=1 -z -xf $(JUJU_TARBALL)
-	quilt push -a
-	for name in $(shell find ../common/core/ -name "*.go"); \
-		do ln -s $$(pwd)/$$name $(JUJU_SRC)/$$(echo $$name | cut -d / -f 4-); \
-	done
-
-	GOPATH=$(GO_PATH) $(GO) build -v -i fake-jujud.go
-	GOPATH=$(GO_PATH) $(GO) build -v -i fake-juju.go
+build: overlay patch
+	GOPATH=$(GO_PATH) $(GO) build -v -i $(SERVER).go
+	GOPATH=$(GO_PATH) $(GO) build -v -i $(CLIENT).go
 
 .PHONY: unit-test
-unit-test: $(JUJU_TARBALL) $(JUJU_PATCH)
+unit-test: overlay patch
 	GOPATH=$(GO_PATH) $(GO) test ./service -timeout 5m -gocheck.vv
 
 .PHONY: test
@@ -55,21 +44,41 @@ test: $(JUJU_VERSION)
 endif
 
 .PHONY: install
-install: $(JUJU_VERSION)
-	install -D fake-jujud $(JUJU_INSTALLED)
+install:
+	install -D $(SERVER) $(DESTDIR)/usr/bin/$(SERVER)-$(JUJU_VERSION)
+	install -D fake-juju $(DESTDIR)/usr/bin/$(CLIENT)-$(JUJU_VERSION)
+
+# Copy fake-juju Go code extensions to the upstream source tree
+.PHONY: overlay
+overlay: src
+	# First clean up the upstream source tree from any overlay symlink
+	# we might have created in previous runs.
+	find src/ -name *-fakejuju.go -delete
+
+	# Then create new symlinks against our overlay Go source files.
+	for name in $(shell find ../common/core/ -name "*.go"); \
+		do ln -s $$(pwd)/$$name src/$$(echo $$name | sed -e "s|^../common/core/||"); \
+	done
+
+# Apply quilt patches to the upstream source tree
+.PHONY: patch
+patch: src
+	quilt applied > /dev/null 2>&1 || quilt push -a
+
+# Extract the upstream tarball
+.PHONY: src
+src: $(JUJU_TARBALL)
+	test -e src || tar --strip=1 -z -xf $(JUJU_TARBALL)
+
+# Download the upstream tarball
+$(JUJU_TARBALL):
+	wget $(JUJU_TARBALL_URL)
 
 .PHONY: clean
 clean:
 	rm -f $(JUJU_TARBALL)
-	rm -rf $(JUJU_SRC)
-	rm -f $(JUJU_VERSION)
-
-$(JUJU_TARBALL):
-	wget $(JUJU_TARBALL_URL)
-
-$(JUJU_UNPACKED_CLEAN): $(JUJU_TARBALL)
-	mkdir -p $(JUJU_UNPACKED_CLEAN)
-	tar -C $(JUJU_UNPACKED_CLEAN) --strip=2 -z -xf $(JUJU_TARBALL)
-
-$(JUJU_VERSION):
-	GOPATH=$(GO_PATH) $(GO) build -v fake-jujud.go
+	rm -rf src
+	rm -rf .pc
+	rm -rf pkg
+	rm -f $(SERVER)
+	rm -f $(CLIENT)

@@ -32,10 +32,6 @@ JUJU_VERSION = "2.0.2"
 FAKE_JUJUD = os.path.join(ROOT, JUJU_VERSION, "fake-jujud")
 FAKE_JUJU = os.path.join(ROOT, JUJU_VERSION, "fake-juju")
 
-# Constants from github.com/juju/juju/testing/environ.go
-CONTROLLER_UUID = "deadbeef-1bad-500d-9000-4b1d0d06f00d"
-MODEL_UUID = "deadbeef-0bad-400d-8000-4b1d0d06f00d"
-
 
 class JujuMongoDBIntegrationTest(TestCase):
 
@@ -74,7 +70,6 @@ class FakeJujuIntegrationTest(TestCase):
         juju_data = self.useFixture(TempDir())
         self.useFixture(EnvironmentVariable("JUJU_DATA", juju_data.path))
         check_call([FAKE_JUJU, "bootstrap", "foo", "bar"])
-        check_call([FAKE_JUJU, "switch", "bar"], stdout=PIPE, stderr=STDOUT)
 
         output = check_output([FAKE_JUJU, "status", "--format=json"])
         status = json.loads(output)
@@ -93,7 +88,6 @@ class FakeJujuIntegrationTest(TestCase):
         juju_data = self.useFixture(TempDir())
         self.useFixture(EnvironmentVariable("JUJU_DATA", juju_data.path))
         check_call([FAKE_JUJU, "bootstrap", "foo", "bar"])
-        check_call([FAKE_JUJU, "switch", "bar"], stdout=PIPE, stderr=STDOUT)
         check_call([FAKE_JUJU, "destroy-controller", "-y", "bar"])
         self.assertRaises(
             CalledProcessError,

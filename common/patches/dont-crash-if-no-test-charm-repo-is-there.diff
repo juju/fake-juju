@@ -4,7 +4,7 @@ test charm repository to be empty.
 
 The patch also adds a helper BuildRepo function that initializes
 the Repo variable with the sample repository, like the original
-code. This is needed for unit tests of fake-juju itself, that do
+code. This is needed for unit tests of fake-juju itself, that
 want a test charm repository.
 
 Index: 2.0.2/src/github.com/juju/juju/testcharms/charm.go

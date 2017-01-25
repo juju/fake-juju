@@ -20,6 +20,8 @@ install:
 	for VERSION in $(JUJU_VERSIONS); do \
 	    $(MAKE) -C $$VERSION install; \
 	done
+	install -d $(DESTDIR)/usr/share/fake-juju/cert
+	install -t $(DESTDIR)/usr/share/fake-juju/cert cert/*
 
 .PHONY: clean
 clean:

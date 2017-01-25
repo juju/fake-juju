@@ -1,6 +1,8 @@
 include ../common/makefile.mk
 
 JUJU_PATCH = juju-core.patch
+JUJU_INSTALLDIR = $(DESTDIR)/usr/bin
+JUJU_INSTALLED = $(JUJU_INSTALLDIR)/fake-juju-$(JUJU_VERSION)
 
 build: $(JUJU_TARBALL) $(JUJU_PATCH)
 	rm -rf $(JUJU_SRC)  # Go doesn't play nice with existing files.
