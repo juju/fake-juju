@@ -7,8 +7,8 @@ JUJU_MAJOR = $(shell echo $(JUJU_VERSION) | cut -f1 -d.)
 JUJU_MAJOR_MINOR = $(shell (echo $(JUJU_VERSION) | cut -f 1,2 -d . | cut -f 1 -d -))
 JUJU_SRC = src
 
-SERVER = fake-jujud
-CLIENT = fake-juju
+SERVER = fake-jujud-$(JUJU_VERSION)
+CLIENT = fake-juju-$(JUJU_VERSION)
 
 ifeq (1, $(JUJU_MAJOR))
   JUJU_PROJECT=juju-core
@@ -23,8 +23,8 @@ JUJU_TARBALL_URL=https://launchpad.net/$(JUJU_PROJECT)/$(JUJU_MAJOR_MINOR)/$(JUJ
 init:
 	ln -s ../common/patches .
 	ln -s ../common/service .
-	ln -s ../common/$(SERVER).go .
-	ln -s ../common/$(CLIENT).go .
+	ln -s ../common/fake-jujud.go $(SERVER).go
+	ln -s ../common/fake-juju.go $(CLIENT).go
 
 .PHONY: build
 build: overlay patch
@@ -45,8 +45,8 @@ endif
 
 .PHONY: install
 install:
-	install -D $(SERVER) $(DESTDIR)/usr/bin/$(SERVER)-$(JUJU_VERSION)
-	install -D fake-juju $(DESTDIR)/usr/bin/$(CLIENT)-$(JUJU_VERSION)
+	install -D $(SERVER) $(DESTDIR)/usr/bin/$(SERVER)
+	install -D $(CLIENT) $(DESTDIR)/usr/bin/$(CLIENT)
 
 # Copy fake-juju Go code extensions to the upstream source tree
 .PHONY: overlay
