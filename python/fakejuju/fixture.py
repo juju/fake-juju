@@ -6,7 +6,6 @@ import ssl
 from subprocess import (
     check_output,
     STDOUT,
-    PIPE,
 )
 
 from fixtures import (
@@ -39,6 +38,13 @@ JUJU_MONGOD_ARGS = (  # See github.com/juju/testing/mgo.go
 )
 
 FAKE_JUJUD = "fake-jujud"
+
+# The test model has a stable UUID. See:
+# github.com/juju/juju/testing/environ.go
+MODEL_UUID = "deadbeef-0bad-400d-8000-4b1d0d06f00d"
+
+USER = "user-admin"
+PASSWORD = "dummy-secret"
 
 
 class JujuMongoDB(MongoDB):

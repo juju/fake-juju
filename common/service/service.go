@@ -178,6 +178,8 @@ func (s *FakeJujuService) handleEntityChanged(entity multiwatcher.EntityId) erro
 		return s.handleMachineChanged(entity.Id)
 	case "unit":
 		return s.handleUnitChanged(entity.Id)
+	case "action":
+		return s.handleActionChanged(entity.Id)
 	default:
 		log.Infof("Ignoring kind %s", entity.Kind)
 		return nil
