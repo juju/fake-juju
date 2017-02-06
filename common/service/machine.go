@@ -29,9 +29,17 @@ func (s *FakeJujuService) handleMachineChanged(id string) error {
 		return err
 	}
 
-	if st.Status == status.Pending {
+	switch st.Status {
+	case status.Pending:
 		if err := s.startMachine(machine); err != nil {
 			return err
+		}
+	case status.Started:
+		if id == "0" && s.ready != nil {
+			// Notify the Ready() method
+			s.ready <- nil
+			close(s.ready)
+			s.ready = nil
 		}
 	}
 

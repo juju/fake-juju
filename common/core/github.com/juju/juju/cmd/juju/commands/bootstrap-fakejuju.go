@@ -1,13 +1,17 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/juju/juju/api"
 	"github.com/juju/juju/cmd/modelcmd"
 	"github.com/juju/juju/jujuclient"
 	"github.com/juju/juju/testing"
 	"github.com/juju/juju/version"
+	"github.com/juju/retry"
+	"github.com/juju/utils/clock"
 )
 
 // Custom bootstrap logic for fake juju, which essentially:
@@ -57,16 +61,33 @@ func (c *bootstrapCommand) fakeJujuBootstrap() error {
 	if err := c.SetModelName(modelcmd.JoinModelName(controller, model)); err != nil {
 		return err
 	}
+
+	// Make sure that the controller is fully initialized and the endpoints
+	// are published. We retry a few times since the state may lag a big.
+	return retry.Call(retry.CallArgs{
+		Func:     c.fakeJujuIsReady,
+		Attempts: 5,
+		Delay:    time.Second,
+		Clock:    clock.WallClock,
+	})
+}
+
+func (c *bootstrapCommand) fakeJujuIsReady() error {
 	client, err := c.NewAPIClient()
 	if err != nil {
 		return err
 	}
-	version, err := client.AgentVersion()
+	endpoints, err := client.APIHostPorts()
 	if err != nil {
 		return err
 	}
-	logger.Debugf("fake-jujud agent version %s", version.String())
-
+	logger.Debugf("fake-jujud endpoints %v", endpoints)
+	if len(endpoints) == 0 {
+		return errors.New("No state servers available")
+	}
+	if len(endpoints[0]) == 0 {
+		return errors.New("No endpoints available")
+	}
 	return nil
 }
 
@@ -80,7 +101,7 @@ func writeControllersFile(store jujuclient.ClientStore, controller string) error
 		ControllerUUID: testing.ControllerTag.Id(),
 		CACert:         testing.CACert,
 		AgentVersion:   version.Current.String(),
-		APIEndpoints:   []string{fmt.Sprintf("localhost:%d", port - 1)},
+		APIEndpoints:   []string{fmt.Sprintf("localhost:%d", port-1)},
 	}
 	if err := store.AddController(controller, details); err != nil {
 		return err

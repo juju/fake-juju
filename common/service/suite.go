@@ -42,6 +42,8 @@ func (s *FakeJujuSuite) SetUpTest(c *gc.C) {
 
 	log.Infof("Starting fake-juju watch loop")
 	s.service.Start()
+	err = s.service.Ready()
+	c.Assert(err, gc.IsNil)
 }
 
 func (s *FakeJujuSuite) TearDownTest(c *gc.C) {

@@ -51,6 +51,7 @@ func NewFakeJujuService(
 		state:   state,
 		api:     api,
 		options: options,
+		ready:   make(chan error, 1),
 		done:    make(chan error, 1),
 	}
 }
@@ -67,6 +68,10 @@ type FakeJujuService struct {
 
 	// Monotonically incrementing counter for generating instance IDs.
 	instanceCount int
+
+	// A channel that will be filled with nil if machine 0 could be
+	// started cleanly, or with an error otherwise.
+	ready chan error
 
 	// A channel that will be filled with nil if the FakeJujuService
 	// completes cleanly, or with an error otherwise.
@@ -117,6 +122,12 @@ func (s *FakeJujuService) Initialize() error {
 func (s *FakeJujuService) Start() {
 	s.watcher = s.state.Watch()
 	go s.watch()
+}
+
+// Wait for the service to be ready, i.e. wait for machine 0 to transition
+// to the "started" state.
+func (s *FakeJujuService) Ready() error {
+	return <-s.ready
 }
 
 // Stop the service, cancelling our delta watcher. This method will wait
