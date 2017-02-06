@@ -19,6 +19,11 @@ func (s *FakeJujuService) handleUnitChanged(id string) error {
 		return err
 	}
 
+	workloadStatus, err := unit.Status()
+	if err != nil {
+		return err
+	}
+
 	agentStatus, err := unit.AgentStatus()
 	if err != nil {
 		return err
@@ -26,6 +31,8 @@ func (s *FakeJujuService) handleUnitChanged(id string) error {
 
 	if agentStatus.Status == status.Allocating {
 		return s.startUnit(unit)
+	} else if workloadStatus.Status != status.Error && ShouldFail("unit", id) {
+		return s.errorUnit(unit)
 	}
 
 	return nil
@@ -70,6 +77,19 @@ func (s *FakeJujuService) startUnit(unit *state.Unit) error {
 		return err
 	}
 	return nil
+}
+
+// Mark a unit as failed (i.e. transition it to the errored state)
+func (s *FakeJujuService) errorUnit(unit *state.Unit) error {
+	log.Infof("Erroring unit %s", unit.Name())
+
+	now := time.Now()
+
+	return unit.SetAgentStatus(status.StatusInfo{
+		Status:  status.Error,
+		Message: "unit errored",
+		Since:   &now,
+	})
 }
 
 // Create a machine for a unit that doesn't have one yet

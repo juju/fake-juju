@@ -3,6 +3,7 @@ Twisted
 fixtures
 pbr
 pymongo
+requests
 testtools
 txfixtures
 txjuju>=0.9.0a2

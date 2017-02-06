@@ -16,6 +16,7 @@ func (f *FakeJujuRunner) serveControlPlaneAPI() error {
 	mux := pat.New()
 	mux.Post("/bootstrap", http.HandlerFunc(f.bootstrap))
 	mux.Post("/destroy", http.HandlerFunc(f.destroy))
+	mux.Post("/fail/:entity", http.HandlerFunc(f.fail))
 
 	// We want to use a port different than the one used for the
 	// juju API server. Incrementing by one will do the trick and
@@ -58,6 +59,11 @@ func (f *FakeJujuRunner) destroy(w http.ResponseWriter, req *http.Request) {
 	command := newCommand(commandCodeDestroy)
 	f.commands <- command
 	writeResponse(w, <-command.done)
+}
+
+// Mark the given entity as doomed to fail
+func (f *FakeJujuRunner) fail(w http.ResponseWriter, req *http.Request) {
+	SetFailure(req.URL.Query().Get(":entity"))
 }
 
 // Write the response, in case of error the message is provided in the body.

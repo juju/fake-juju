@@ -1,23 +1,11 @@
 import os
 import json
 
-import yaml
-
-from subprocess import (
-    check_output,
-    check_call,
-    STDOUT,
-    PIPE,
-    CalledProcessError,
-)
+from subprocess import CalledProcessError
 
 from testtools import TestCase
 
-from fixtures import (
-    FakeLogger,
-    EnvironmentVariable,
-    TempDir
-)
+from fixtures import FakeLogger
 
 from txfixtures import Reactor
 
@@ -37,8 +25,8 @@ class JujuMongoDBIntegrationTest(TestCase):
     def setUp(self):
         super(JujuMongoDBIntegrationTest, self).setUp()
         self.logger = self.useFixture(FakeLogger())
-        self.useFixture(Reactor())
-        self.mongodb = self.useFixture(JujuMongoDB())
+        reactor = self.useFixture(Reactor())
+        self.mongodb = self.useFixture(JujuMongoDB(reactor))
 
     def test_client(self):
         """The mongo instance is up and we can connect fine with the client."""
@@ -50,7 +38,7 @@ class FakeJujuIntegrationTest(TestCase):
     def setUp(self):
         super(FakeJujuIntegrationTest, self).setUp()
         self.logger = self.useFixture(FakeLogger())
-        self.useFixture(Reactor())
+        reactor = self.useFixture(Reactor())
 
         # The JUJU_VERSION variable is a hook that can be used to force tests
         # run against a specific version.
@@ -61,7 +49,8 @@ class FakeJujuIntegrationTest(TestCase):
         env = {"PATH": "{}:{}".format(
             os.path.join(ROOT, version), os.environ["PATH"])}
 
-        self.fake_juju = self.useFixture(FakeJuju(version=version, env=env))
+        self.fake_juju = self.useFixture(
+            FakeJuju(reactor, version=version, env=env))
 
     def test_up(self):
         """The fake-juju service is connected to the mongodb one."""

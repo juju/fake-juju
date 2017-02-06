@@ -1,0 +1,14 @@
+Index: 2.0.2/src/github.com/juju/juju/cmd/juju/controller/kill.go
+===================================================================
+--- 2.0.2.orig/src/github.com/juju/juju/cmd/juju/controller/kill.go
++++ 2.0.2/src/github.com/juju/juju/cmd/juju/controller/kill.go
+@@ -99,6 +99,9 @@ func (c *killCommand) Init(args []string
+ 
+ // Run implements Command.Run
+ func (c *killCommand) Run(ctx *cmd.Context) error {
++	// XXX fake-juju: start patch
++	return c.fakeJujuKillController()
++	// XXX fake-juju: end patch
+ 	controllerName := c.ControllerName()
+ 	store := c.ClientStore()
+ 	if !c.assumeYes {

@@ -50,7 +50,7 @@ func (s *FakeJujuSuite) TearDownTest(c *gc.C) {
 	log.Infof("Stopping fake-juju watch loop")
 
 	c.Assert(s.service.Stop(), gc.IsNil)
-
+	ClearFailures()
 	s.JujuConnSuite.TearDownTest(c)
 }
 

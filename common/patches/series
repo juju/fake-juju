@@ -8,3 +8,4 @@ stronger-test-certificates.diff
 dont-reset-logging-in-test-suite.diff
 dont-propagate-signals-to-child-mongodb-process.diff
 apply-mgo-pr-311
+fake-cli-kill-controller.diff

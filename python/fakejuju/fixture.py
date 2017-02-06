@@ -2,6 +2,7 @@
 
 import os
 import ssl
+import requests
 
 from subprocess import (
     check_output,
@@ -52,43 +53,42 @@ class JujuMongoDB(MongoDB):
     Spawn a juju-mongodb server, suitable for acting as fake-juju backend.
     """
 
-    def __init__(self):
+    def __init__(self, reactor, timeout=None):
+        # We honor the JUJU_MONGOD environment variable, the same one
+        # supported by github.com/juju/testing/mgo.go, and set by the
+        # fake-juju Travis job (see .travis.yml).
+        command = os.environ.get("JUJU_MONGOD", JUJU_MONGOD)
         serverPem = os.path.join(_get_cert_dir(), "server.pem")
-        args = JUJU_MONGOD_ARGS + (
-            "--sslPEMKeyFile={serverPem}".format(serverPem=serverPem),)
+        args = list(JUJU_MONGOD_ARGS) + [
+            "--sslPEMKeyFile={serverPem}".format(serverPem=serverPem)]
         super(JujuMongoDB, self).__init__(
-            # We honor the JUJU_MONGOD environment variable, the same one
-            # supported by github.com/juju/testing/mgo.go, and set by the
-            # fake-juju Travis job (see .travis.yml).
-            mongod=os.environ.get("JUJU_MONGOD", JUJU_MONGOD),
-            args=args,
-        )
+            reactor, command=command, args=args, timeout=timeout)
         self.setClientKwargs(ssl=True, ssl_cert_reqs=ssl.CERT_NONE)
 
 
 class FakeJuju(Service):
     """Spawn a fake-juju process, pointing to the given mongodb port."""
 
-    def __init__(self, version="2.0.2", mongo=None, port=17100, **kwargs):
+    def __init__(self, reactor, version="2.0.2", mongo=None, env=None,
+                 timeout=None):
         """
         :param version: The version number of the specific fake-juju to use.
         :param mongo: The JujuMongoDB fixture instance managing the mongod
             process to point this fake-juju to. If None, a brand new one
             will be created.
-        :param port: Port that the fake juju control plane API will listen to.
-            The juju API server bootstrapped by fake-jujud itself will listen
-            to "port -1 ".
         """
         self.version = version
-        command = ["fake-jujud-{}".format(self.version)]
-        super(FakeJuju, self).__init__(command, **kwargs)
+        command = "fake-jujud-{}".format(self.version)
+        super(FakeJuju, self).__init__(
+            reactor, command, timeout=timeout, env=env)
         self.mongo = mongo
+        self.expectPort(17100)
         self.expectOutput("Starting main loop")
-        self.expectPort(port)  # This is the control-plane API port
 
     def _setUp(self):
         if self.mongo is None:
-            self.mongo = self.useFixture(JujuMongoDB())
+            self.mongo = self.useFixture(
+                JujuMongoDB(self.reactor, timeout=self.protocol.timeout))
         super(FakeJuju, self)._setUp()
 
     @property
@@ -99,9 +99,20 @@ class FakeJuju(Service):
         """Return a FakeJujuCLI fixture matching this fake-juju version."""
         return self.useFixture(FakeJujuCLI(self.version, env=self.env))
 
-    @property
-    def _args(self):
-        return self.command + [
+    def fail(self, entity):
+        """Mark the given entity as failing.
+
+        It will be transitioned to the error state as soon as it gets created.
+
+        Currently only failing units is supported.
+
+        :param entity: A string of the form "<kind>-<id>", for example
+            "unit-postgresql-1".
+        """
+        requests.post("http://localhost:{}/fail/{}".format(self.port, entity))
+
+    def _extraArgs(self):
+        return [
             "-mongo", str(self.mongo.port),
             "-port", str(self.port - 1)]
 
