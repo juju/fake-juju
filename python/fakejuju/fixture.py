@@ -97,7 +97,7 @@ class FakeJuju(Service):
 
     @property
     def address(self):
-        return "localhost:%d" % self.port
+        return "localhost:%d" % (self.port - 1)
 
     @property
     def port(self):
