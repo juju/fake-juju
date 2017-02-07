@@ -17,6 +17,10 @@ from fixtures import (
 from txfixtures import Service
 from txfixtures.mongodb import MongoDB
 
+# Default fake-juju version that code consuming the FakeJuju fixture will use.
+# It can be tweaked by using a JUJU_VERSION environment variable.
+DEFAULT_VERSION = os.environ.get("JUJU_VERSION", "2.0.2")
+
 # Directory where the test certificate to use lives.
 DEFAULT_CERT_DIR = "/usr/share/fake-juju/cert"
 
@@ -69,7 +73,7 @@ class JujuMongoDB(MongoDB):
 class FakeJuju(Service):
     """Spawn a fake-juju process, pointing to the given mongodb port."""
 
-    def __init__(self, reactor, version="2.0.2", mongo=None, env=None,
+    def __init__(self, reactor, version=DEFAULT_VERSION, mongo=None, env=None,
                  timeout=None):
         """
         :param version: The version number of the specific fake-juju to use.
@@ -90,6 +94,10 @@ class FakeJuju(Service):
             self.mongo = self.useFixture(
                 JujuMongoDB(self.reactor, timeout=self.protocol.timeout))
         super(FakeJuju, self)._setUp()
+
+    @property
+    def address(self):
+        return "localhost:%d" % self.port
 
     @property
     def port(self):
