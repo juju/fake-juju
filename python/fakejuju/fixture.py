@@ -29,6 +29,9 @@ ROOT = os.path.dirname(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 JUJU_MONGOD = "/usr/lib/juju/mongo3.2/bin/mongod"
+if not os.path.exists(JUJU_MONGOD):  # Trusty has no mongo 3.2
+    JUJU_MONGOD = "/usr/lib/juju/bin/mongod"
+
 JUJU_MONGOD_ARGS = (  # See github.com/juju/testing/mgo.go
     "--nssize=1",
     "--noprealloc",
