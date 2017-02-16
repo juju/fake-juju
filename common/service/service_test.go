@@ -29,8 +29,9 @@ func (s *FakeJujuServiceSuite) SetUpTest(c *gc.C) {
 	s.JujuConnSuite.SetUpTest(c)
 
 	options := &service.FakeJujuOptions{
-		Mongo:  -1, // Use the MongoDB instance that the suite will setup
-		Series: "xenial",
+		Mongo:             -1, // Use the MongoDB instance that the suite will setup
+		Series:            "xenial",
+		AutoStartMachines: true,
 	}
 	s.service = service.NewFakeJujuService(s.BackingState, s.APIState, options)
 }

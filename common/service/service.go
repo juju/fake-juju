@@ -41,6 +41,10 @@ type FakeJujuOptions struct {
 	// custom certificate that JujuConnSuite generates, and that the
 	// rest of testing facilities execpt.
 	UseRandomCert bool
+
+	// Whether to automatically start machines for units that don't appear
+	// to have one.
+	AutoStartMachines bool
 }
 
 // The core fake-juju service

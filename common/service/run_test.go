@@ -24,12 +24,13 @@ func (s *FakeJujuRunnerSuite) SetUpTest(c *gc.C) {
 	s.MgoSuite.SetUpTest(c)
 	s.output = &bytes.Buffer{}
 	s.options = &service.FakeJujuOptions{
-		Output:        s.output,
-		Series:        "xenial",
-		Level:         loggo.DEBUG,
-		Mongo:         testing.MgoServer.Port(),
-		Port:          12345,
-		UseRandomCert: true,
+		Output:            s.output,
+		Series:            "xenial",
+		Level:             loggo.DEBUG,
+		Mongo:             testing.MgoServer.Port(),
+		Port:              12345,
+		UseRandomCert:     true,
+		AutoStartMachines: true,
 	}
 	s.runner = service.NewFakeJujuRunner(s.options)
 }

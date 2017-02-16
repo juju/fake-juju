@@ -45,11 +45,17 @@ func (s *FakeJujuService) startUnit(unit *state.Unit) error {
 	now := time.Now()
 
 	if _, err := unit.AssignedMachineId(); err != nil {
-		// If the unit has no machine assigned, we'll create one
-		// for it. We should eventually get another delta about
-		// the unit, and at that point this if branch won't be
-		// taken anymore, because there's an assigned machine.
-		return s.addMachineForUnit(unit)
+		if s.options.AutoStartMachines {
+			// If the unit has no machine assigned, we'll create one
+			// for it. We should eventually get another delta about
+			// the unit, and at that point this if branch won't be
+			// taken anymore, because there's an assigned machine.
+			return s.addMachineForUnit(unit)
+		} else {
+			// Just no-op, we'll retry as soon as the unit gets
+			// associated with a machine.
+			return nil
+		}
 	}
 
 	if err := unit.SetAgentStatus(status.StatusInfo{
