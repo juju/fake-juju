@@ -5,11 +5,11 @@ This is needed by code under test that creates machines with
 provider-specific constraints, and doesn't know it's actually talking
 to fake juju with a dummy provider.
 
-Index: 2.0.2/src/github.com/juju/juju/provider/dummy/environs.go
+Index: 2.1-rc1/src/github.com/juju/juju/provider/dummy/environs.go
 ===================================================================
---- 2.0.2.orig/src/github.com/juju/juju/provider/dummy/environs.go
-+++ 2.0.2/src/github.com/juju/juju/provider/dummy/environs.go
-@@ -645,9 +645,11 @@ func (e *environ) checkBroken(method str
+--- 2.1-rc1.orig/src/github.com/juju/juju/provider/dummy/environs.go
++++ 2.1-rc1/src/github.com/juju/juju/provider/dummy/environs.go
+@@ -656,9 +656,11 @@ func (e *environ) checkBroken(method str
  
  // PrecheckInstance is specified in the state.Prechecker interface.
  func (*environ) PrecheckInstance(series string, cons constraints.Value, placement string) error {

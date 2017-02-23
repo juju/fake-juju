@@ -1,0 +1,101 @@
+Handle test cerificates used by fake-juju, with 
+
+Index: 2.0.2/src/github.com/juju/juju/testing/cert-fakejuju.go
+===================================================================
+--- 2.0.2.orig/src/github.com/juju/juju/testing/fakejuju.go
++++ 2.0.2/src/github.com/juju/juju/testing/fakejuju.go
+@@ -0,0 +1,94 @@
++// Handle test certificates used by fake-juju
++
++package testing
++
++import (
++	"io/ioutil"
++	"os"
++	"path/filepath"
++	"runtime"
++
++	"github.com/juju/loggo"
++
++	gitjujutesting "github.com/juju/testing"
++
++	"github.com/juju/juju/cert"
++)
++
++var (
++	filenames = []string{
++		"ca.cert",
++		"ca.key",
++		"server.cert",
++		"server.key",
++	}
++
++	certificates = []*string{
++		&CACert,
++		&CAKey,
++		&ServerCert,
++		&ServerKey,
++	}
++)
++
++// Set the certificate global variables in the github.com/juju/juju/testing
++// package, to make the test suite use a custom certificate (the one in the
++// cert/ directory of the fake-juju tree) instead of the auto-generated
++// one that would otherwise be set. This allows us to point to an external
++// MongoDB process, spawned using the custom certificate.
++func SetCerts() error {
++
++	path := getCustomCertPath()
++
++	loggo.GetLogger("").Debugf("Loading certificates from %s", path)
++
++	// Read the certificate bytes, overwriting the relevant variables
++	// from github.com/juju/juju/testing.
++	for i, filename := range filenames {
++		data, err := ioutil.ReadFile(filepath.Join(path, filename))
++		if err != nil {
++			return err
++		}
++		*certificates[i] = string(data)
++	}
++
++	// Parse the bytes converting them into Go objects
++	caCertX509, _, err := cert.ParseCertAndKey(CACert, CAKey)
++	if err != nil {
++		return err
++	}
++	serverCert, serverKey, err := cert.ParseCertAndKey(ServerCert, ServerKey)
++	if err != nil {
++		return err
++	}
++
++	// Set the global Certs object in the Juju testing package
++	Certs = &gitjujutesting.Certs{
++		CACert:     caCertX509,
++		ServerCert: serverCert,
++		ServerKey:  serverKey,
++	}
++
++	return nil
++}
++
++const defaultCertPath = "/usr/share/fake-juju/cert"
++
++// Figure out where our custom certificate lives. If we detect that we're
++// running in fake-juju source checkout, use the local copy of the custom
++// certificate (under <SOURCE>/cert), otherwise use the default installation
++// path.
++func getCustomCertPath() string {
++
++	// Look for the path of this source file
++	_, filename, _, _ := runtime.Caller(0)
++
++	// If we find a local certificate directory, let's use it. Otherwise,
++	// let's use the default installed one.
++	path := filepath.Join(filepath.Dir(filename), "../../../../../../cert")
++	if _, err := os.Stat(path); os.IsNotExist(err) {
++		path = defaultCertPath
++	}
++
++	return path
++}

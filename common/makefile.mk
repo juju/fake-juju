@@ -63,7 +63,7 @@ overlay: src
 # Apply quilt patches to the upstream source tree
 .PHONY: patch
 patch: src
-	quilt --quiltrc=/dev/null applied > /dev/null 2>&1 || quilt --quiltrc=/dev/null push -a
+	! quilt --quiltrc=/dev/null unapplied > /dev/null 2>&1 || quilt --quiltrc=/dev/null push -a
 
 # Extract the upstream tarball
 .PHONY: src

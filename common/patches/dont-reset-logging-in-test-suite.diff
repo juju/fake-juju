@@ -5,10 +5,10 @@ Since fake-jujud sets up logging very early (to log its own starting
 messages), the code in LoggingSuite would overwrite these settings,
 and also discard logging happening during the test setup.
 
-Index: 2.0.2/src/github.com/juju/testing/log.go
+Index: 2.1-rc1/src/github.com/juju/testing/log.go
 ===================================================================
---- 2.0.2.orig/src/github.com/juju/testing/log.go
-+++ 2.0.2/src/github.com/juju/testing/log.go
+--- 2.1-rc1.orig/src/github.com/juju/testing/log.go
++++ 2.1-rc1/src/github.com/juju/testing/log.go
 @@ -50,6 +50,9 @@ func (s *LoggingSuite) SetUpSuite(c *gc.
  }
  

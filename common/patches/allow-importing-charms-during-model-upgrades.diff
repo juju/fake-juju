@@ -3,11 +3,11 @@ Allow importing "cs:" charms also when a model is not upgrading.
 This is needed by test code wanting to upload fake charms to fake-juju,
 so it doesn't reach out the real charm store.
 
-Index: 2.0.2/src/github.com/juju/juju/apiserver/charms.go
+Index: 2.1-rc1/src/github.com/juju/juju/apiserver/charms.go
 ===================================================================
---- 2.0.2.orig/src/github.com/juju/juju/apiserver/charms.go
-+++ 2.0.2/src/github.com/juju/juju/apiserver/charms.go
-@@ -284,7 +284,9 @@ func (h *charmsHandler) processPost(r *h
+--- 2.1-rc1.orig/src/github.com/juju/juju/apiserver/charms.go
++++ 2.1-rc1/src/github.com/juju/juju/apiserver/charms.go
+@@ -294,7 +294,9 @@ func (h *charmsHandler) processPost(r *h
  		if isImporting, err := modelIsImporting(st); err != nil {
  			return nil, errors.Trace(err)
  		} else if !isImporting {
@@ -17,4 +17,4 @@ Index: 2.0.2/src/github.com/juju/juju/apiserver/charms.go
 +			// XXX fake-juju: end patch
  		}
  
- 		// If a revision argument is provided, it takes precedence
+ 		// Use the user argument if provided (users only make sense

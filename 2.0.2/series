@@ -1,6 +1,6 @@
 fake-cli-destroy-environment.diff
 allow-importing-charms-during-model-upgrades.diff
-fake-cli-bootstrap.diff
+fake-cli-bootstrap-2.0.diff
 support-for-custom-api-port.diff
 allow-real-placement-constraints.diff
 dont-crash-if-no-test-charm-repo-is-there.diff
@@ -9,3 +9,4 @@ dont-reset-logging-in-test-suite.diff
 dont-propagate-signals-to-child-mongodb-process.diff
 apply-mgo-pr-311
 fake-cli-kill-controller.diff
+juju-cert-to-utils-2.0

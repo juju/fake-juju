@@ -4,10 +4,10 @@ In particular, this is necessary so we can have SIGINT and SIGTERM
 handled just by fake-juju, which will then shutdown mongod by itself,
 without having the OS get in the way.
 
-Index: 2.0.2/src/github.com/juju/testing/mgo.go
+Index: 2.1-rc1/src/github.com/juju/testing/mgo.go
 ===================================================================
---- 2.0.2.orig/src/github.com/juju/testing/mgo.go
-+++ 2.0.2/src/github.com/juju/testing/mgo.go
+--- 2.1-rc1.orig/src/github.com/juju/testing/mgo.go
++++ 2.1-rc1/src/github.com/juju/testing/mgo.go
 @@ -22,6 +22,7 @@ import (
  	"strconv"
  	"strings"

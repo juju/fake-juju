@@ -19,7 +19,7 @@ from txfixtures.mongodb import MongoDB
 
 # Default fake-juju version that code consuming the FakeJuju fixture will use.
 # It can be tweaked by using a JUJU_VERSION environment variable.
-DEFAULT_VERSION = os.environ.get("JUJU_VERSION", "2.0.2")
+DEFAULT_VERSION = os.environ.get("JUJU_VERSION", "2.1-rc2")
 
 # Directory where the test certificate to use lives.
 DEFAULT_CERT_DIR = "/usr/share/fake-juju/cert"
